@@ -1,0 +1,7 @@
+(define (>= x y) (not (< x y)))
+
+(define (sum_lager_numbers a b c)
+	(cond ((and (>= a b) (>= c b)) (+ (* a a) (* c c)))
+		  ((and (>= a c) (>= b c)) (+ (* a a) (* b b)))
+		  ((and (>= c a) (>= b a)) (+ (* c c) (* b b)))
+)
