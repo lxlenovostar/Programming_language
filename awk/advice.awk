@@ -1,2 +1,2 @@
 #! /bin/awk -f
-BEGIN { print "Don't Panic!" }
+BEGIN { print "Don't Panic! hi" }
