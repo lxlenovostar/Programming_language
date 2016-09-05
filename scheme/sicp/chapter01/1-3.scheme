@@ -1,7 +1,10 @@
-(define (>= x y) (not (< x y)))
+(define (square a) (* a a))
+
+(define (sum-of-squares a b)
+		(+ (square a) (square b)))
 
 (define (sum_lager_numbers a b c)
-	(cond ((and (>= a b) (>= c b)) (+ (* a a) (* c c)))
-		  ((and (>= a c) (>= b c)) (+ (* a a) (* b b)))
-		  ((and (>= c a) (>= b a)) (+ (* c c) (* b b)))
-)
+	(cond ((and (>= a b) (>= c b)) (sum-of-squares a c))
+		  ((and (>= a c) (>= b c)) (sum-of-squares a b))
+		  ((and (>= c a) (>= b a)) (sum-of-squares b c))
+))
