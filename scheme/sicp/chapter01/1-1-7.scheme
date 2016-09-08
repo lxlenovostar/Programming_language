@@ -14,8 +14,6 @@
 	(cond (predicate then-clause)
 			(else else-clause)))
 
-//applicative-order evaluation ??
-
 (define (sqrt-iter guess x)
 	(if (good-enough? guess x)
 		guess 
