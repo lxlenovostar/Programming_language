@@ -33,3 +33,5 @@ void Bind(int fd, const struct sockaddr *sa, socklen_t salen);
 int Socket(int family, int type, int protocol);
 ssize_t Recvfrom(int fd, void *ptr, size_t nbytes, int flags, struct sockaddr *sa, socklen_t *salenptr);
 void Sendto(int fd, const void *ptr, size_t nbytes, int flags, const struct sockaddr *sa, socklen_t salen);
+const char* Inet_ntop(int family, const void *addrptr, char *strptr, size_t len);
+void Inet_pton(int family, const char *strptr, void *addrptr);
