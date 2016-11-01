@@ -1,0 +1,35 @@
+(define (add_mu a b)
+	(if (= b 0)
+	0
+	(+ a (add_mu a (- b 1)))))
+
+(define (double x)
+	(+ x x)
+)
+
+(define (even? n)
+	(= (remainder n 2) 0)
+)
+
+(define (halve n)
+	(/ n 2)
+)
+
+(define (add_fast a b)
+	(cond ((= b 0) 0)
+		  ((even? b) (double (add_fast a (halve b))))
+ 		  (else (+ a (add_fast a (- b 1))))
+    )
+)
+
+(define (add_r_iter a b product) 
+	(cond ((= b 0) product)
+		  ((even? b) (add_r_iter (double a) (halve b) product))
+		  (else (add_r_iter a (- b 1) (+ a product))) 
+	)
+)
+
+(define (add_iter a b)
+	(add_r_iter a b 0)
+)
+
