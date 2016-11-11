@@ -1,6 +1,12 @@
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <string.h>
+#include    <sys/socket.h>
+#include    <netinet/in.h>
+#include    <string.h>
+#include    <sys/types.h>   /* basic system data types */
+#include    <stdio.h>       /* for convenience */
+#include    <stdlib.h>      /* for convenience */
+#include    <string.h>      /* for convenience */
+#include    <unistd.h>      /* for convenience */
+
 
 /*
 struct in_addr {
