@@ -1,4 +1,5 @@
-#include	"lx_socket.h"
+#include	"lx_sock.h"
+#include 	"errno.h"
 
 void
 str_echo(int sockfd)
