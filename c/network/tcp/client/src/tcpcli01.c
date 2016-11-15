@@ -1,4 +1,5 @@
 #include	"../lib/lx_sock.h"
+#include	"../lib/error.h"
 
 int
 main(int argc, char **argv)

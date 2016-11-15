@@ -1,3 +1,4 @@
+CFLAGS = -Wall -g
 objects = tcpserv01.o
 
 tcpser : $(objects)

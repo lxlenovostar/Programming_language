@@ -3,6 +3,7 @@
  */
 
 #include	"lx_sock.h"
+#include    "error.h"
 
 void
 Fclose(FILE *fp)

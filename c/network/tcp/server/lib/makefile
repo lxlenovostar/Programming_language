@@ -1,3 +1,4 @@
+CFLAGS = -Wall -g
 objects = error.o lx_sock.o sigchildwait.o signal.o str_echo.o 
 
 tcpser : $(objects)

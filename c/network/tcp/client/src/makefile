@@ -1,3 +1,4 @@
+CFLAGS = -Wall -g
 objects = tcpcli01.o
 
 tcpser : $(objects)

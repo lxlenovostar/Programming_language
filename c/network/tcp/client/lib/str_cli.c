@@ -1,4 +1,5 @@
 #include	"lx_sock.h"
+#include 	"error.h"
 
 void
 str_cli(FILE *fp, int sockfd)
