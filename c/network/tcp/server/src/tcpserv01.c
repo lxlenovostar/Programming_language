@@ -1,4 +1,5 @@
 #include "../lib/lx_sock.h"
+#include "../lib/error.h"
 
 int
 main(int argc, char **argv)
@@ -22,7 +23,15 @@ main(int argc, char **argv)
 
 	for ( ; ; ) {
 		clilen = sizeof(cliaddr);
-		connfd = Accept(listenfd, (SA *) &cliaddr, &clilen);
+
+		//connfd = Accept(listenfd, (SA *) &cliaddr, &clilen);
+		/* 处理系统调用被信号中断的情况 */
+		if ((connfd = accept(listenfd, (SA *)&cliaddr, &clilen)) < 0) {
+			if (errno == EINTR)
+				continue;
+			else  
+				err_sys("accept error");
+		}
 
 		if ( (childpid = Fork()) == 0) {	/* child process */
 			Close(listenfd);	/* close listening socket */
