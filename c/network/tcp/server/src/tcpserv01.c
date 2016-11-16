@@ -19,7 +19,8 @@ main(int argc, char **argv)
 	Bind(listenfd, (SA *) &servaddr, sizeof(servaddr));
 
 	Listen(listenfd, LISTENQ);
-	Signal(SIGCHLD, sig_chld);
+
+	Signal(SIGCHLD, sig_chld);	/* must call waitpid() */
 
 	for ( ; ; ) {
 		clilen = sizeof(cliaddr);
