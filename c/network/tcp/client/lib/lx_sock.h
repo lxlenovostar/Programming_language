@@ -58,3 +58,4 @@ char * Fgets(char *ptr, int n, FILE *stream);
 void Fputs(const char *ptr, FILE *stream);
 void sig_chld(int signo);
 Sigfunc * Signal(int signo, Sigfunc *func);
+void str_cli(FILE *fp, int sockfd);
