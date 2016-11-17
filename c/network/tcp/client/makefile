@@ -1,4 +1,4 @@
-tcpser : 
+tcpcli : 
 	cd lib; make 
 	cd src; make 
 	gcc -Wall lib/*.o src/*.o -o tcpcli
