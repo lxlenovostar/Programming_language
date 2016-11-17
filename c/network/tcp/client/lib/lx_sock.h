@@ -40,6 +40,9 @@ struct sockaddr {
 
 typedef void    Sigfunc(int);   /* for signal handlers */
 
+#define min(a,b)    ((a) < (b) ? (a) : (b))
+#define max(a,b)    ((a) > (b) ? (a) : (b))
+
 void Bind(int fd, const struct sockaddr *sa, socklen_t salen);
 int Socket(int family, int type, int protocol);
 ssize_t Recvfrom(int fd, void *ptr, size_t nbytes, int flags, struct sockaddr *sa, socklen_t *salenptr);
@@ -59,3 +62,4 @@ void Fputs(const char *ptr, FILE *stream);
 void sig_chld(int signo);
 Sigfunc * Signal(int signo, Sigfunc *func);
 void str_cli(FILE *fp, int sockfd);
+int Select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
