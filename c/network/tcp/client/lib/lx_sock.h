@@ -63,3 +63,6 @@ void sig_chld(int signo);
 Sigfunc * Signal(int signo, Sigfunc *func);
 void str_cli(FILE *fp, int sockfd);
 int Select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struct timeval *timeout);
+ssize_t Read(int fd, void *ptr, size_t nbytes);
+void Write(int fd, void *ptr, size_t nbytes);
+void Shutdown(int fd, int how);
