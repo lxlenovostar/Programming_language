@@ -44,8 +44,13 @@ public class DateTemperaturePair
         return pair;
     }
 
+    /*
+     * The Writable interface defines two methods — one for writing its state to a DataOutput
+     * binary stream and one for reading its state from a DataInput binary stream.
+     * */
     @Override
     public void write(DataOutput out) throws IOException {
+    	/* serialize write this object to out length uses zero-compressed encoding */
         yearMonth.write(out);
         day.write(out);
         temperature.write(out);
@@ -53,11 +58,16 @@ public class DateTemperaturePair
 
     @Override
     public void readFields(DataInput in) throws IOException {
+    	/* deserialize */
         yearMonth.readFields(in);
         day.readFields(in);
         temperature.readFields(in);
     }
 
+    /*
+     * WritableComparable interface, which is just a subinterface
+     * of the Writable and java.lang.Comparable interfaces.
+     * */
     @Override
     public int compareTo(DateTemperaturePair pair) {
         int compareValue = this.yearMonth.compareTo(pair.getYearMonth());
@@ -84,6 +94,9 @@ public class DateTemperaturePair
         return temperature;
     }
 
+    /*
+     * Set to contain the contents of a string.
+     * */
     public void setYearMonth(String yearMonthAsString) {
         yearMonth.set(yearMonthAsString);
     }
