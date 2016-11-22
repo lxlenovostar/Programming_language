@@ -18,16 +18,32 @@ import org.apache.hadoop.conf.Configuration;
  * @author Mahmoud Parsian
  *
  */
+/*
+ * public interface Tool extends Configurable
+ * 
+ * public class ToolRunner extends Object
+ * 
+ * ToolRunner can be used to run classes implementing Tool interface. It works in conjunction with GenericOptionsParser to 
+ * parse the generic hadoop command line arguments and modifies the Configuration of the Tool. The application-specific options
+ * are passed along without being modified.
+ * 
+ * public interface Configurable
+ * Something that may be configured with a Configuration.
+ * 
+ * public class Configuration extends Object implements Iterable<Map.Entry<String,String>>, Writable
+ * Provides access to configuration parameters.
+ * 
+ * public class Configured extends Object implements Configurable
+ * Base class for things that may be configured with a Configuration.
+ * 
+ * */
 public class SecondarySortDriver  extends Configured implements Tool {
 
 		private static Logger theLogger = Logger.getLogger(SecondarySortDriver.class);
 
         @Override
         public int run(String[] args) throws Exception {
-        	/*
-        	 * public class Configuration extends Object implements Iterable<Map.Entry<String,String>>, Writable
-             * Provides access to configuration parameters.
-        	 * */
+        	/* Configuration processed by ToolRunner */
         	Configuration conf = getConf();
         	
         	Job job = new Job(conf);
@@ -35,11 +51,13 @@ public class SecondarySortDriver  extends Configured implements Tool {
         	job.setJarByClass(SecondarySortDriver.class);
         	job.setJobName("SecondarySortDriver");
 		
+        	/* Process custom command-line options */
     		// args[0] = input directory
     		// args[1] = output directory
         	FileInputFormat.setInputPaths(job, new Path(args[0]));
         	FileOutputFormat.setOutputPath(job, new Path(args[1]));
 
+        	/* Specify various job-specific parameters */
         	job.setOutputKeyClass(DateTemperaturePair.class);
         	job.setOutputValueClass(Text.class);
 		
@@ -86,6 +104,7 @@ public class SecondarySortDriver  extends Configured implements Tool {
         	//String[] args = new String[2];
         	//args[0] = inputDir;
         	//args[1] = outputDir;
+        	/* Runs the Tool with its Configuration. */
         	int returnStatus = ToolRunner.run(new SecondarySortDriver(), args);
         	return returnStatus;
         }
