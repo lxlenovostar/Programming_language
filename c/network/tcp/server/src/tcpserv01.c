@@ -29,11 +29,13 @@ main(int argc, char **argv)
 	maxi = -1;	        /* index into clinet[] array */
 	for (i = 0; i < FD_SETSIZE; i++)
 		client[i] = -1; 	/* -1 indicates available entry */
+
 	FD_ZERO(&allset);
 	FD_SET(listenfd, &allset);
 
 	for ( ; ; ) {
 		rset = allset; 	/* structure assignment */
+		/* returns: positive count of ready descriptors, 0 on timeout, -1 on error */
 		nready = Select(maxfd + 1, &rset, NULL, NULL, NULL);
 
 		/* new client connection */
@@ -71,6 +73,15 @@ main(int argc, char **argv)
 		for (i = 0; i <= maxi; i++) {
 			if ((sockfd = client[i]) < 0)
 				continue;
+			/*
+             When a server is handling multiple clients, the server can never block in 
+			 a function call related to a single client. Doing so can hang the server 
+			 and deny service to all other clients. This is called a denial-of-service attack.
+			 Possible solutions: 
+             1. use nonblocking I/O  
+             2. have each client serviced by a sparate thread of control.
+             3. place a timeout on the I/O
+             */
 			if (FD_ISSET(sockfd, &rset)) {
 				/* connection closed by client */
 				if ((n = Read(sockfd, buf, MAXLEN)) == 0) {
