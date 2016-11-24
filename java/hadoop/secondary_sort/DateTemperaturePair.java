@@ -1,5 +1,5 @@
-package org.dataalgorithms.chap01.mapreduce;
-
+package org.apache.hadoop.examples;
+/*
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
 import org.apache.hadoop.io.IntWritable;
@@ -8,6 +8,11 @@ import org.apache.hadoop.io.WritableComparable;
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
+*/
+
+import java.io.*;
+import org.apache.hadoop.io.*;
+
 
 /** 
  * The DateTemperaturePair class enable us to represent a 
@@ -22,7 +27,7 @@ import java.io.IOException;
  *
  */
 public class DateTemperaturePair 
-    implements Writable, WritableComparable<DateTemperaturePair> {   //检查是否可以移除前面的借口
+    implements WritableComparable<DateTemperaturePair> {   
 
     private final Text yearMonth = new Text(); 
     private final Text day = new Text();

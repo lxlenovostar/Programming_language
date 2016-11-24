@@ -1,4 +1,4 @@
-package org.dataalgorithms.chap01.mapreduce;
+package org.apache.hadoop.examples;
 
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Reducer;
