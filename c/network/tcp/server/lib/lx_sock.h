@@ -8,6 +8,9 @@
 #include    <unistd.h>      /* for convenience */
 #include    <signal.h>
 #include    <sys/wait.h>
+#include    <poll.h>
+#include    <limits.h>		
+
 
 /*
 struct in_addr {
@@ -39,6 +42,18 @@ struct sockaddr {
    kernels still #define it as 5, while actually supporting many more */
 #define LISTENQ     1024    /* 2nd argument to listen() */
 
+/* POSIX requires that an #include of <poll.h> DefinE INFTIM, but many
+   systems still DefinE it in <sys/stropts.h>.  We don't want to include
+   all the STREAMS stuff if it's not needed, so we just DefinE INFTIM here.
+   This is the standard value, but there's no guarantee it is -1. */
+#ifndef INFTIM
+#define INFTIM          (-1)    /* infinite poll timeout */
+#endif
+
+#ifndef OPEN_MAX
+#define OPEN_MAX	1024	/* APUE P52 */
+#endif  
+
 typedef void    Sigfunc(int);   /* for signal handlers */
 
 void Bind(int fd, const struct sockaddr *sa, socklen_t salen);
@@ -60,3 +75,4 @@ void Fputs(const char *ptr, FILE *stream);
 void sig_chld(int signo);
 Sigfunc * Signal(int signo, Sigfunc *func);
 void str_echo(int sockfd);
+int Poll(struct pollfd *fdarray, unsigned long nfds, int timeout);

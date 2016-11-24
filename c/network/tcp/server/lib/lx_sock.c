@@ -153,3 +153,13 @@ Connect(int fd, const struct sockaddr *sa, socklen_t salen)
         err_sys("connect error");
 }
 
+int
+Poll(struct pollfd *fdarray, unsigned long nfds, int timeout)
+{
+    int     n;  
+
+    if ( (n = poll(fdarray, nfds, timeout)) < 0)
+        err_sys("poll error");
+
+    return(n);
+}

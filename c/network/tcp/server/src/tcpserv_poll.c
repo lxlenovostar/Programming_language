@@ -1,14 +1,13 @@
 #include "../lib/lx_sock.h"
 #include "../lib/error.h"
-#include <limits.h>		/* for OPEN_MAX */
 
 int
 main(int argc, char **argv)
 {
-	int	i, maxi, maxfd, listenfd, connfd, sockfd;
+	int	i, maxi, listenfd, connfd, sockfd;
 	int nready;
 	ssize_t n;
-	char buf[MAXLEN];	
+	char buf[MAXLINE];	
 	socklen_t			clilen;
 	struct sockaddr_in	cliaddr, servaddr;
 	struct pollfd client[OPEN_MAX];
@@ -33,11 +32,8 @@ main(int argc, char **argv)
 	/* max index into client[] array */
 	maxi = 0;
 
-	FD_ZERO(&allset);
-	FD_SET(listenfd, &allset);
-
 	for ( ; ; ) {
-		nready = Poll(client, maxi + 1; INFTIM);
+		nready = Poll(client, maxi + 1, INFTIM);
 		
 		/* new client connection */
 		if (client[0].revents & POLLRDNORM) {
@@ -70,6 +66,10 @@ main(int argc, char **argv)
 			if ((sockfd = client[i].fd) < 0)
 				continue;
 			
+			/* 
+              The reason we check for POLLERR is because some implementations return 
+			  this event when an RST is received for a connection.
+             */
 			if (client[i].revents & (POLLRDNORM | POLLERR)) {
 				if ((n = read(sockfd, buf, MAXLINE)) < 0) {
 					/* connection reset by client */
