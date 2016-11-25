@@ -35,7 +35,7 @@ str_cli(FILE *fp, int sockfd)
 
 		/* input is readable */
 		if (FD_ISSET(fileno(fp), &rset)) {
-			if ((n = Read(fileno(fp), buf, MAXLINE)) == NULL) {
+			if ((n = Read(fileno(fp), buf, MAXLINE)) == 0) {
 				stdineof = 1;
 				Shutdown(sockfd, SHUT_WR);	/* send FIN */
 				FD_CLR(fileno(fp), &rset);
