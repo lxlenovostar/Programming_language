@@ -6,8 +6,27 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#define MAX_PAYLOAD 1024  /* maximum payload size*/
+#define MAX_PAYLOAD 128  /* maximum payload size*/
 #define NETLINK_USER 31
+
+/*
+struct sockaddr_nl
+{
+  sa_family_t    nl_family;  // AF_NETLINK   
+  unsigned short nl_pad;     // zero         
+  __u32          nl_pid;     // process pid 
+  __u32          nl_groups;  // mcast groups mask 
+} nladdr;
+
+struct nlmsghdr
+{
+  __u32 nlmsg_len;   // Length of message 
+  __u16 nlmsg_type;  // Message type
+  __u16 nlmsg_flags; // Additional flags 
+  __u32 nlmsg_seq;   // Sequence number 
+  __u32 nlmsg_pid;   // Sending process PID 
+};
+*/
 
 struct sockaddr_nl src_addr, dest_addr;
 struct nlmsghdr *nlh = NULL;
@@ -32,6 +51,11 @@ int main() {
  	dest_addr.nl_pid = 0;   /* For Linux Kernel */
  	dest_addr.nl_groups = 0; /* unicast */
 
+	/*
+     NLMSG_SPACE()
+     Return the number of bytes that a netlink message with payload
+     of len would occupy.
+     */
  	nlh = (struct nlmsghdr *)malloc(NLMSG_SPACE(MAX_PAYLOAD));
 	/* Fill the netlink message header */
  	nlh->nlmsg_len = NLMSG_SPACE(MAX_PAYLOAD);
@@ -41,12 +65,23 @@ int main() {
  	/* Fill in the netlink message payload */
  	strcpy(NLMSG_DATA(nlh), "Hello you!");
 
- 	iov.iov_base = (void *)nlh;
- 	iov.iov_len = nlh->nlmsg_len;
- 	msg.msg_name = (void *)&dest_addr;
- 	msg.msg_namelen = sizeof(dest_addr);
- 	msg.msg_iov = &iov;
- 	msg.msg_iovlen = 1;
+	/* set struct iovec iov */
+ 	iov.iov_base = (void *)nlh;		/* starting address of buffer */
+ 	iov.iov_len = nlh->nlmsg_len;	/* size of buffer */
+
+	/* struct msghdr msg; */
+	/*
+     The msg_name and msg_namelen members are used when the socket is not connected(eg, and 
+     unconnected UDP socket).
+     */
+ 	msg.msg_name = (void *)&dest_addr;	/* protocol address */
+ 	msg.msg_namelen = sizeof(dest_addr); /* size of protocol address */
+	/*
+	 The msg_iov and msg_iovlen members specify the array of input or output buffers(the array of 
+	 iovec structs).
+     */
+ 	msg.msg_iov = &iov; /* scatter/gather array */
+ 	msg.msg_iovlen = 1;	/* elements in msg_iov */
 
 	printf("Sending message to kernel\n");
  	sendmsg(sock_fd, &msg, 0);
@@ -55,6 +90,10 @@ int main() {
  	/* Read message from kernel */
  	memset(nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
  	recvmsg(sock_fd, &msg, 0);
+	/*  
+     NLMSG_DATA()
+     Return a pointer to the payload associated with the passed nlmsghdr.
+     */
  	printf("Received message payload:%s\n", (char *)NLMSG_DATA(nlh));
 
  	/* Close Netlink Socket */
