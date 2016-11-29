@@ -28,7 +28,8 @@ WS_CFILES   = $(shell find -maxdepth 1 -name "*.c")
 export WS_OBJS = $(WS_CFILES:.c=.o)
 
 #if $KERNELDIR don't assigned, ?= will assign it.
-KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+#KERNELDIR ?= /lib/modules/$(shell uname -r)/build
+KERNELDIR ?= /root/ws_6/usr/src/kernels/2.6.32-358.6.1.ws5.b.6.2.1
 
 PWD := $(shell pwd)
 

@@ -1,5 +1,5 @@
 CFLAGS = -Wall -g
-objects = userspace.o
+objects = userspace
 
 tcpser : $(objects)
 
