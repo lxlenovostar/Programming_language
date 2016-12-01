@@ -16,7 +16,7 @@ import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 
-import org.dataalgorithms.util.HadoopUtil;
+//import org.apache.hadoop.examples.HadoopUtil;
 
 /**
  * TopNDriver: assumes that all K's are unique for all given (K,V) values.
@@ -37,9 +37,16 @@ public class TopNDriver  extends Configured implements Tool {
 	   * Normally the user creates the application, describes various facets of the job via Job and then submits 
 	   * the job and monitor its progress.
 	   * */
+	   /*
+	    * public Configuration getConf()
+	    * 
+		* Description copied from interface: Configurable  
+		* Return the configuration used by this object.
+	    * */
+	   // 构造函数　Job(Configuration conf)
       Job job = new Job(getConf());
       
-      HadoopUtil.addJarsToDistributedCache(job, "/lib/");
+      //HadoopUtil.addJarsToDistributedCache(job, "/lib/");
       
       int N = Integer.parseInt(args[0]); // top N
       
@@ -73,9 +80,12 @@ public class TopNDriver  extends Configured implements Tool {
       job.getConfiguration().setInt("N", N);
       job.setJobName("TopNDriver");
 
+      /*
+       先修改 TODO
       job.setInputFormatClass(SequenceFileInputFormat.class);
       job.setOutputFormatClass(SequenceFileOutputFormat.class);
-
+	  */
+      
       job.setMapperClass(TopNMapper.class);
       job.setReducerClass(TopNReducer.class);
       job.setNumReduceTasks(1);

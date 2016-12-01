@@ -12,6 +12,7 @@ import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
 import org.apache.hadoop.mapreduce.Mapper;
+import org.apache.hadoop.io.LongWritable;
 
 /**
  *  Mapper's input are read from SequenceFile and records are: (K, V)
@@ -23,20 +24,29 @@ import org.apache.hadoop.mapreduce.Mapper;
  *
  */
 public class TopNMapper extends
-   Mapper<Text, IntWritable, NullWritable, Text> {
+	Mapper<LongWritable, Text, NullWritable, Text> {
+   //Mapper<Text, IntWritable, NullWritable, Text> {
 
    private int N = 10; // default
    private SortedMap<Integer, String> top = new TreeMap<Integer, String>();
 
    @Override
-   public void map(Text key, IntWritable value, Context context)
+   //public void map(Text key, IntWritable value, Context context)
+   public void map(LongWritable key, Text value, Context context)
          throws IOException, InterruptedException {
 
+	  /* TODO
       String keyAsString = key.toString();
       int frequency =  value.get();
       
       String compositeValue = keyAsString + "," + frequency;
-      
+      */
+	  String line = value.toString();
+	  String[] tokens = line.split(",");
+	  
+	  int frequency = Integer.parseInt(tokens[0]);
+	  String compositeValue = line;
+	  
       top.put(frequency, compositeValue);
       
       // keep only top N

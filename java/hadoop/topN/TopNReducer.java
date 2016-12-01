@@ -37,9 +37,10 @@ public class TopNReducer  extends
       for (Text value : values) {
          String valueAsString = value.toString().trim();
          String[] tokens = valueAsString.split(",");
-         String url = tokens[0];
-         int frequency =  Integer.parseInt(tokens[1]);
-         top.put(frequency, url);
+         //String url = tokens[0];
+         int frequency =  Integer.parseInt(tokens[0]);
+         //top.put(frequency, url);
+         top.put(frequency, valueAsString);
          
          // keep only top N
          if (top.size() > N) {
@@ -50,7 +51,13 @@ public class TopNReducer  extends
       // emit final top N
       List<Integer> keys = new ArrayList<Integer>(top.keySet());
       
+      /*
       for(int i=keys.size()-1; i>=0; i--){
+    	  context.write(new IntWritable(keys.get(i)), new Text(top.get(keys.get(i))));
+      }
+      */
+      
+      for(int i=0; i < keys.size(); i++){
     	  context.write(new IntWritable(keys.get(i)), new Text(top.get(keys.get(i))));
       }
    }
