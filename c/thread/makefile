@@ -1,5 +1,5 @@
 CFLAGS = -D_REENTRANT -Wall -g -lpthread
-objects = thread2
+objects = thread3a
 
 tcpser : $(objects)
 
