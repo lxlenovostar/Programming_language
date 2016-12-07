@@ -7,11 +7,14 @@ static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static void *
 thread_comm_kernel(void *arg)
 {
-	int end = 1000;
+	/*int end = 1000;
 	int i;
 	for(i = 0; i < end; i++) {
 		sleep(1);
-	}
+	}*/
+
+	
+
     return NULL;
 }
 
@@ -34,6 +37,8 @@ main(int argc, char *argv[])
 		printf("Thread creation failed\n");
 		exit(EXIT_FAILURE);
 	}
+
+	//TODO 注册消息处理函数处理15信号，用于关闭进程。
 
 	res = pthread_join(kernel_tid, NULL);
 	if (res != 0) {

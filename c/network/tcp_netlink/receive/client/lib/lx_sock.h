@@ -7,6 +7,8 @@
 #include    <string.h>      /* for convenience */
 #include    <unistd.h>      /* for convenience */
 #include    <signal.h>
+#include 	<time.h>
+#include 	<pthread.h>
 
 /*
 struct in_addr {
