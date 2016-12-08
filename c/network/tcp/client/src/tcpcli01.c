@@ -1,3 +1,6 @@
+#include <fcntl.h>
+#include <sys/types.h>
+#include <sys/stat.h>
 #include	"../lib/lx_sock.h"
 #include	"../lib/error.h"
 
@@ -6,6 +9,7 @@ main(int argc, char **argv)
 {
 	int					sockfd;
 	struct sockaddr_in	servaddr;
+	int 				w_fd;
 
 	if (argc != 2)
 		err_quit("usage: tcpcli <IPaddress>");
@@ -19,7 +23,15 @@ main(int argc, char **argv)
 
 	Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
 
-	str_cli(stdin, sockfd);		/* do it all */
+	w_fd = open("tempfile_for_select", O_RDWR | O_CREAT);
+	if (w_fd == -1) {
+		close(sockfd);
+		err_quit("open file failed.");
+	}
+	
+	//str_cli(stdin, sockfd);		/* do it all */
+	str_cli(w_fd, sockfd);		/* do it all */
 
+	close(w_fd);
 	exit(0);
 }
