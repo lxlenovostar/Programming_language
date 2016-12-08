@@ -15,7 +15,7 @@ import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.mapreduce.lib.partition.InputSampler;
 import org.apache.hadoop.mapreduce.lib.partition.TotalOrderPartitioner;
 import org.apache.hadoop.util.*;
-import org.apache.hadoop.io.compress.BZip2Codec;
+
 
 // vv SortByTemperatureUsingTotalOrderPartitioner
 public class SortByTemperatureUsingTotalOrderPartitioner extends Configured
@@ -45,11 +45,26 @@ public class SortByTemperatureUsingTotalOrderPartitioner extends Configured
      * 
      * */
     job.setPartitionerClass(TotalOrderPartitioner.class);
+    
+    /*
+     *  The most basic random sample is called a simple random sample, and which is equivalent to using
+     *   a raffle to select cases. This means that each case in the population has an equal chance of being 
+     *   included and there is no implied connection between the cases in the sample.
+     * */
 
     /*
      * public class InputSampler<K,V> extends Configured implements Tool 
      * 
      * Utility for collecting samples and writing a partition file for TotalOrderPartitioner.
+     * */
+    /*
+     * public InputSampler.RandomSampler(double freq, int numSamples, int maxSplitsSampled) 
+     * 
+     * Create a new RandomSampler. 
+     * Parameters:
+     * freq - Probability with which a key will be chosen.
+     * numSamples - Total number of samples to obtain from all selected splits.
+     * maxSplitsSampled - The maximum number of splits to examine.
      * */
     InputSampler.Sampler<IntWritable, Text> sampler = new InputSampler.RandomSampler<IntWritable, Text>(0.1, 10000, 10);
     
@@ -67,6 +82,15 @@ public class SortByTemperatureUsingTotalOrderPartitioner extends Configured
 
     // Add to DistributedCache
     Configuration conf = job.getConfiguration();
+    /*
+     * A range partitioner will distribute map outputs based on a predefined range of values, 
+     * where each range maps to a reducer that will receive all outputs within that range. 
+     * This is exactly how the TotalOrderPartitioner works.
+     * For range partitioners such as the TotalOrderPartitioner to do their work, they need 
+     * to know the output key ranges for a given job. The TotalOrderPartitioner is accompanied by
+     * a sampler that samples the input data and writes these ranges to HDFS, which 
+     * is then used by the TotalOrderPartitioner when partitioning. 
+     * */
     String partitionFile = TotalOrderPartitioner.getPartitionFile(conf);
     URI partitionUri = new URI(partitionFile);
     job.addCacheFile(partitionUri);
