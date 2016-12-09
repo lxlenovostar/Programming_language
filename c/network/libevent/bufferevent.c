@@ -41,22 +41,42 @@ readcb(struct bufferevent *bev, void *ctx)
     char *line;
     size_t n;
     int i;
+	/*
+     Returns the input buffer.
+	 The user MUST NOT set the callback on this buffer.
+     */
     input = bufferevent_get_input(bev);
     output = bufferevent_get_output(bev);
 
+	/*
+     Read a single line from an evbuffer.
+
+	 Reads a line terminated by an EOL as determined by the evbuffer_eol_style 
+     argument. Returns a newly allocated nul-terminated string; the caller must 
+     free the returned value. The EOL is not included in the returned string.
+     */
     while ((line = evbuffer_readln(input, &n, EVBUFFER_EOL_LF))) {
         for (i = 0; i < n; ++i)
             line[i] = rot13_char(line[i]);
+		/*
+         Append data to the end of an evbuffer.
+         */
         evbuffer_add(output, line, n);
         evbuffer_add(output, "\n", 1);
         free(line);
     }
 
+	/* Returns the total number of bytes stored in the evbuffer. */
     if (evbuffer_get_length(input) >= MAX_LINE) {
         /* Too long; just process what there is and go on so that the buffer
          * doesn't grow infinitely long. */
         char buf[1024];
         while (evbuffer_get_length(input)) {
+			/*
+             Read data from an evbuffer and drain the bytes read.
+			 If more bytes are requested than are available in the evbuffer, 
+             we only extract as many bytes as were available.
+             */
             int n = evbuffer_remove(input, buf, sizeof(buf));
             for (i = 0; i < n; ++i)
                 buf[i] = rot13_char(buf[i]);
@@ -96,9 +116,23 @@ do_accept(evutil_socket_t listener, short event, void *arg)
     } else {
         struct bufferevent *bev;
         evutil_make_socket_nonblocking(fd);
+		/* Create a new socket bufferevent over an existing socket. */
         bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
+		/* Changes the callbacks for a bufferevent. */
         bufferevent_setcb(bev, readcb, NULL, errorcb, NULL);
+		/*
+         Sets the watermarks for read and write events.
+
+		 On input, a bufferevent does not invoke the user read callback unless there is 
+         at least low watermark data in the buffer. If the read buffer is beyond the high 
+         watermark, the bufferevent stops reading from the network.
+
+		 On output, the user write callback is invoked whenever the buffered data falls 
+         below the low watermark. Filters that write to this bufev will try not to write 
+         more bytes to this buffer than the high watermark would allow, except when flushing.
+         */	
         bufferevent_setwatermark(bev, EV_READ, 0, MAX_LINE);
+		/* Enable a bufferevent. */
         bufferevent_enable(bev, EV_READ|EV_WRITE);
     }
 }
