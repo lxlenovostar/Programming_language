@@ -64,6 +64,13 @@ dg_echo(int sockfd_arg, SA *pcliaddr, socklen_t clilen_arg)
 	/* Block SIGIO, save previous signal mask */
 	Sigprocmask(SIG_BLOCK, &newmask, &oldmask);
 	for ( ; ; ) {
+		/*
+         测试nqueue的时候，需要对SIGIO进行阻塞，因为其被主循环和信号处理函数所共享。
+         假如没有没有被阻塞，我们可能测试 nqueue时发现它为0，但是刚测试完毕SIGIO信号
+         就递交了，导致nqueue被设置为1，我们接着调用sigsuspend进入睡眠，这样实际上就
+         错过了这个信号，除非另有其他信号发生，否则我们将永远不能从sigsuspend调用中
+         被唤醒。
+         */
 		while (nqueue == 0)
 			/* 
              a means of atomically unblocking a signal and suspending the process. 
