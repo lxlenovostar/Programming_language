@@ -1,6 +1,12 @@
 #include	"lx_sock.h"
 #include 	"error.h"
 
+/*
+ How does non-blocking I/O provide better throughput? The OS schedules the 
+ user process differently in the case of blocking and non-blocking I/O. When 
+ you block, the process sleeps, which leads to a context switch. When you us
+ use non-blocking sockets, this problem is avoided.
+ */
 void
 str_cli(FILE *fp, int sockfd)
 {
