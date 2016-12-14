@@ -9,7 +9,7 @@ main(int argc, char **argv)
 {
 	int					sockfd;
 	struct sockaddr_in	servaddr;
-	int 				w_fd;
+	//int 				w_fd;
 
 	if (argc != 2)
 		err_quit("usage: tcpcli <IPaddress>");
@@ -23,15 +23,18 @@ main(int argc, char **argv)
 
 	Connect(sockfd, (SA *) &servaddr, sizeof(servaddr));
 
+	/*
 	w_fd = open("tempfile_for_select", O_RDWR | O_CREAT);
 	if (w_fd == -1) {
 		close(sockfd);
 		err_quit("open file failed.");
 	}
 	
-	//str_cli(stdin, sockfd);		/* do it all */
-	str_cli(w_fd, sockfd);		/* do it all */
-
+	str_cli(w_fd, sockfd);		// do it all 
 	close(w_fd);
+    */
+
+	str_cli(NULL, sockfd);		/* do it all */
+
 	exit(0);
 }

@@ -164,4 +164,12 @@ Select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
     return(n);      /* can return 0 on timeout */
 } 
   
+int
+Fcntl(int fd, int cmd, int arg)
+{
+    int n;
 
+    if ( (n = fcntl(fd, cmd, arg)) == -1) 
+        err_sys("fcntl error");
+    return(n);
+}
