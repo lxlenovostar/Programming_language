@@ -63,6 +63,8 @@ void eventcb(struct bufferevent *bev, short events, void *ptr)
     if (events & BEV_EVENT_CONNECTED) {
          /* We're connected to 127.0.0.1:8080.   Ordinarily we'd do
             something here, like start reading or writing. */
+		char *send_msg = "hello world."; 
+    	bufferevent_write(bev, send_msg, strlen(send_msg));
     } else if (events & BEV_EVENT_ERROR) {
          /* An error occured while connecting. */
     }
