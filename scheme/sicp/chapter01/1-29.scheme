@@ -19,3 +19,20 @@
 	)
 	(* (sum f (+ a (/ dx 2.0)) add-dx b) dx)
 )
+
+(define (simpson_integral f a b n)
+	(define (add-dx x)
+		(+ x dx)
+	)
+	(* (sum f (+ a (/ dx 2.0)) add-dx b) (/ h 3.0))
+)
+
+如果是偶数要乘２，奇数是乘４。
+
+(define (next a)
+	(+ a (* k h))
+)
+
+(define (add-x x num)
+	(+ x (*num h))
+)
