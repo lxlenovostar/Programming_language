@@ -20,6 +20,16 @@ int main(int argc, char *argv[])
     evutil_socket_t listener;
     listener = socket(AF_INET, SOCK_STREAM, 0);
     assert(listener > 0);
+
+	/*
+     Do platform-specific operations to make a listener socket reusable.
+	 Specifically, we want to make sure that another program will be able to bind this 
+     address right after we've closed the listener.
+
+	 This differs from Windows's interpretation of "reusable", which allows multiple listeners 
+     to bind the same address at the same time.
+     */
+    /* 防止绑定一个现有连接上的端口，从而出现失败的现象。*/
     evutil_make_listen_socket_reuseable(listener);
 
     struct sockaddr_in sin;
@@ -39,13 +49,25 @@ int main(int argc, char *argv[])
 
     printf ("Listening...\n");
 
+	/* 非阻塞的端口 */
     evutil_make_socket_nonblocking(listener);
 
     struct event_base *base = event_base_new();
     assert(base != NULL);
+	/* 绑定事件 */
     struct event *listen_event;
+	/* 参数：event_base, 监听的fd，事件类型及属性，绑定的回调函数，给回调函数的参数 */
+	/*
+      (a) EV_TIMEOUT: 超时
+      (b) EV_READ: 只要网络缓冲中还有数据，回调函数就会被触发
+      (c) EV_WRITE: 只要塞给网络缓冲的数据被写完，回调函数就会被触发
+      (d) EV_PERSIST: 不指定这个属性的话，回调函数被触发后事件会被删除
+      (e) EV_ET: Edge-Trigger边缘触发，参考EPOLL_ET
+     */
     listen_event = event_new(base, listener, EV_READ|EV_PERSIST, do_accept, (void*)base);
+	/* 参数：event，超时时间(struct timeval *类型的，NULL表示无超时设置) */
     event_add(listen_event, NULL);
+	/* 启动事件循环 */
     event_base_dispatch(base);
 
     printf("The End.");
@@ -62,17 +84,18 @@ void do_accept(evutil_socket_t listener, short event, void *arg)
     if (fd < 0) {
         perror("accept");
         return;
-    }
-    if (fd > FD_SETSIZE) { //这个if是参考了那个ROT13的例子，貌似是官方的疏漏，从select-based例子里抄过来忘了改
+    } else if (fd > FD_SETSIZE) { 
         perror("fd > FD_SETSIZE\n");
+		close(fd);
         return;
-    }
+    } else {
+    	printf("ACCEPT: fd = %u\n", fd);
 
-    printf("ACCEPT: fd = %u\n", fd);
-
-    struct bufferevent *bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
-    bufferevent_setcb(bev, read_cb, NULL, error_cb, arg);
-    bufferevent_enable(bev, EV_READ|EV_WRITE|EV_PERSIST);
+		/* 创建一个struct bufferevent *bev，关联该sockfd，托管给event_base */
+    	struct bufferevent *bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
+    	bufferevent_setcb(bev, read_cb, NULL, error_cb, arg);
+    	bufferevent_enable(bev, EV_READ|EV_WRITE|EV_PERSIST);
+	}
 }
 
 void read_cb(struct bufferevent *bev, void *arg)

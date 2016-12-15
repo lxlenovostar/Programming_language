@@ -18,86 +18,33 @@
 
 #define MAX_LINE 16384
 
-void do_read(evutil_socket_t fd, short events, void *arg);
-void do_write(evutil_socket_t fd, short events, void *arg);
-
-char
-rot13_char(char c)
+void read_cb(struct bufferevent *bev, void *ctx)
 {
-    /* We don't want to use isalpha here; setting the locale would change
-     * which characters are considered alphabetical. */
-    if ((c >= 'a' && c <= 'm') || (c >= 'A' && c <= 'M'))
-        return c + 13;
-    else if ((c >= 'n' && c <= 'z') || (c >= 'N' && c <= 'Z'))
-        return c - 13;
-    else
-        return c;
-}
+#define MAX_LINE1    256
+    char line[MAX_LINE1+1];
+    int n;
+    evutil_socket_t fd = bufferevent_getfd(bev);
 
-void
-readcb(struct bufferevent *bev, void *ctx)
-{
-    struct evbuffer *input, *output;
-    char *line;
-    size_t n;
-    int i;
-	/*
-     Returns the input buffer.
-	 The user MUST NOT set the callback on this buffer.
-     */
-    input = bufferevent_get_input(bev);
-    output = bufferevent_get_output(bev);
+    while (n = bufferevent_read(bev, line, MAX_LINE1), n > 0) {
+        line[n] = '\0';
+        printf("fd=%u, read line: %s\n", fd, line);
 
-	/*
-     Read a single line from an evbuffer.
-
-	 Reads a line terminated by an EOL as determined by the evbuffer_eol_style 
-     argument. Returns a newly allocated nul-terminated string; the caller must 
-     free the returned value. The EOL is not included in the returned string.
-     */
-    while ((line = evbuffer_readln(input, &n, EVBUFFER_EOL_LF))) {
-        for (i = 0; i < n; ++i)
-            line[i] = rot13_char(line[i]);
-		/*
-         Append data to the end of an evbuffer.
-         */
-        evbuffer_add(output, line, n);
-        evbuffer_add(output, "\n", 1);
-        free(line);
-    }
-
-	/* Returns the total number of bytes stored in the evbuffer. */
-    if (evbuffer_get_length(input) >= MAX_LINE) {
-        /* Too long; just process what there is and go on so that the buffer
-         * doesn't grow infinitely long. */
-        char buf[1024];
-        while (evbuffer_get_length(input)) {
-			/*
-             Read data from an evbuffer and drain the bytes read.
-			 If more bytes are requested than are available in the evbuffer, 
-             we only extract as many bytes as were available.
-             */
-            int n = evbuffer_remove(input, buf, sizeof(buf));
-            for (i = 0; i < n; ++i)
-                buf[i] = rot13_char(buf[i]);
-            evbuffer_add(output, buf, n);
-        }
-        evbuffer_add(output, "\n", 1);
+        bufferevent_write(bev, line, n);
     }
 }
 
-void
-errorcb(struct bufferevent *bev, short error, void *ctx)
+void error_cb(struct bufferevent *bev, short event, void *arg)
 {
-    if (error & BEV_EVENT_EOF) {
-        /* connection has been closed, do any clean up here */
-        /* ... */
-    } else if (error & BEV_EVENT_ERROR) {
-        /* check errno to see what error occurred */
-        /* ... */
-    } else if (error & BEV_EVENT_TIMEOUT) {
-        /* must be a timeout event handle, handle it */
-        /* ... */
+	evutil_socket_t fd = bufferevent_getfd(bev);
+    printf("fd = %u, ", fd);
+    if (event & BEV_EVENT_TIMEOUT) {
+        printf("Timed out\n"); //if bufferevent_set_timeouts() called
+    }
+    else if (event & BEV_EVENT_EOF) {
+        printf("connection closed\n");
+    }
+    else if (event & BEV_EVENT_ERROR) {
+        printf("some other error\n");
     }
     bufferevent_free(bev);
 }
@@ -105,13 +52,14 @@ errorcb(struct bufferevent *bev, short error, void *ctx)
 void
 do_accept(evutil_socket_t listener, short event, void *arg)
 {
-    struct event_base *base = arg;
+    struct event_base *base = (struct event_base *)arg;
     struct sockaddr_storage ss;
     socklen_t slen = sizeof(ss);
     int fd = accept(listener, (struct sockaddr*)&ss, &slen);
     if (fd < 0) {
         perror("accept");
     } else if (fd > FD_SETSIZE) {
+        perror("fd > FD_SETSIZE\n");
         close(fd);
     } else {
         struct bufferevent *bev;
@@ -119,7 +67,7 @@ do_accept(evutil_socket_t listener, short event, void *arg)
 		/* Create a new socket bufferevent over an existing socket. */
         bev = bufferevent_socket_new(base, fd, BEV_OPT_CLOSE_ON_FREE);
 		/* Changes the callbacks for a bufferevent. */
-        bufferevent_setcb(bev, readcb, NULL, errorcb, NULL);
+        bufferevent_setcb(bev, read_cb, NULL, error_cb, NULL);
 		/*
          Sets the watermarks for read and write events.
 
@@ -158,7 +106,7 @@ run(void)
 
     sin.sin_family = AF_INET;
     sin.sin_addr.s_addr = 0;
-    sin.sin_port = htons(40713);
+    sin.sin_port = htons(9877);
 
     listener = socket(AF_INET, SOCK_STREAM, 0);
 	/* Do platform-specific operations as needed to make a socket nonblocking. */
@@ -222,5 +170,7 @@ main(int c, char **v)
     setvbuf(stdout, NULL, _IONBF, 0);
 
     run();
+
+    printf("The End.");
     return 0;
 }
