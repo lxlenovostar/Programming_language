@@ -20,19 +20,28 @@
 	(* (sum f (+ a (/ dx 2.0)) add-dx b) dx)
 )
 
+(define (even? n)
+	(= (remainder n 2) 0)
+)
+
 (define (simpson_integral f a b n)
-	(define (add-dx x)
-		(+ x dx)
+	(define (inc x) (+ x 1))
+
+	(define (next x n count)
+		(cond ((= count 0) (+ x (/ (- b a) n))) 
+			  ((= count n) (+ x (/ (- b a) n)))
+			  ((even? count) (* 2 (+ x (/ (- b a) n))))
+			  (else (* 4 (+ x (/ (- b a) n))) )
+		)		
 	)
-	(* (sum f (+ a (/ dx 2.0)) add-dx b) (/ h 3.0))
+
+	(define (sum term a next b)
+		(if (> a b)
+			0
+		(+ (term a) (sum term (next a n 0) next b))
+    	)
+	)
+
+	(* (sum f a next b) (/ (/ (- b a) n) 3.0))
 )
 
-如果是偶数要乘２，奇数是乘４。
-
-(define (next a)
-	(+ a (* k h))
-)
-
-(define (add-x x num)
-	(+ x (*num h))
-)
