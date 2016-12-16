@@ -25,9 +25,6 @@ int main(int argc, char *argv[])
      Do platform-specific operations to make a listener socket reusable.
 	 Specifically, we want to make sure that another program will be able to bind this 
      address right after we've closed the listener.
-
-	 This differs from Windows's interpretation of "reusable", which allows multiple listeners 
-     to bind the same address at the same time.
      */
     /* 防止绑定一个现有连接上的端口，从而出现失败的现象。*/
     evutil_make_listen_socket_reuseable(listener);
@@ -54,8 +51,8 @@ int main(int argc, char *argv[])
 
     struct event_base *base = event_base_new();
     assert(base != NULL);
-	/* 绑定事件 */
     struct event *listen_event;
+
 	/* 参数：event_base, 监听的fd，事件类型及属性，绑定的回调函数，给回调函数的参数 */
 	/*
       (a) EV_TIMEOUT: 超时
@@ -65,8 +62,10 @@ int main(int argc, char *argv[])
       (e) EV_ET: Edge-Trigger边缘触发，参考EPOLL_ET
      */
     listen_event = event_new(base, listener, EV_READ|EV_PERSIST, do_accept, (void*)base);
+
 	/* 参数：event，超时时间(struct timeval *类型的，NULL表示无超时设置) */
     event_add(listen_event, NULL);
+
 	/* 启动事件循环 */
     event_base_dispatch(base);
 
