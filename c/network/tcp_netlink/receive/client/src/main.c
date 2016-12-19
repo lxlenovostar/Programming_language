@@ -5,6 +5,9 @@
 #include    <pthread.h>
 #include	"../lib/error.h"
 #include	"../lib/lx_netlink.h"
+#include	"../lib/libevent_api.h"
+
+int sock_fd;
 
 int ping_pong_kernel(void) {
 	int res = 0;
@@ -33,11 +36,35 @@ static void* thread_comm_kernel(void *arg) {
 		free_send_msg();
 		rece_from_kernel();
 
-		//TODO 使用libevent 来实现对netlink的监控。
+		//TODO 使用select来实现对netlink的监控，从内核中收到的信息将打印出来。
+		/* ok, we wait information from kernel. */
+		int maxfdp1;
+		fd_set rset;
+		int n = 0;
+
+		for (;;) {
+			FD_SET(sock_fd, &rset);
+			maxfdp1 = sock_fd + 1;
+
+			
+			Select(maxfdp1, &rset, NULL, NULL, NULL);
+			
+			/* socket is readable */
+			if (FD_ISSET(sockfd, &rset)) {
+				n = rece_from_kernel();
+				if (n == 0) {
+					err_quit("kernel maybe terminated prematurely.");
+				} else if (n == -1) {
+					err_quit("something error.");
+				}
+	
+				debug_info();
+			}
+
+		}
 
 		/*
-         TODO 涉及线程互斥  
-		 建立连接
+         TODO 涉及线程互斥,通知有数据加入链表  
          */
 	}
 

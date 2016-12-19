@@ -1,13 +1,13 @@
 #include "lx_netlink.h"
 
-struct sockaddr_nl src_addr, dest_addr;
+struct sockaddr_nl src_addr;
+struct sockaddr_nl dest_addr;
 struct nlmsghdr *send_nlh = NULL;
 struct nlmsghdr *rece_nlh = NULL;
 struct msghdr send_msg;
 struct msghdr rece_msg;
 struct iovec send_iov;
 struct iovec rece_iov;
-int sock_fd;
 
 int init_sock() 
 {
@@ -90,11 +90,20 @@ void send_to_kernel()
 	printf("Waiting for message from kernel\n");
 }
 
-void rece_from_kernel()
+int rece_from_kernel()
 {
+	int n;
  	/* Read message from kernel */
  	memset(rece_nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
- 	recvmsg(sock_fd, &rece_msg, 0);
+ 	n = recvmsg(sock_fd, &rece_msg, 0);
+
+	return n;
+}
+
+void debug_info()
+{
+	if (rece_nlh != NULL && NLMSG_DATA(rece_nlh) != NULL)
+ 		printf("Received message payload:%s\n", (char *)NLMSG_DATA(rece_nlh));
 }
 
 int check_from_kernel() 

@@ -53,8 +53,7 @@ void eventcb(struct bufferevent *bev, short events, void *ptr)
     bufferevent_free(bev);
 }
 
-void
-run(void)
+void run(void)
 {
     struct sockaddr_in servaddr;
     struct event_base *base;
