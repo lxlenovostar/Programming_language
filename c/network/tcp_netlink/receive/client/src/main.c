@@ -55,6 +55,8 @@ main(int argc, char *argv[])
 	}
 
 	//TODO 注册消息处理函数处理15信号，用于关闭进程。
+	//TODO 多个线程如何join
+	//TODO 如何实现心跳 
 
 	res = pthread_join(kernel_tid, NULL);
 	if (res != 0) {
