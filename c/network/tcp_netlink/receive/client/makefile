@@ -1,7 +1,7 @@
 tcpcli : 
 	cd lib; make 
 	cd src; make 
-	gcc -D_REENTRANT -Wall -g -lpthread lib/*.o src/*.o -o tcpcli
+	gcc -D_REENTRANT -Wall -g -lpthread -levent lib/*.o src/*.o -o tcpcli
 
 .PHONY : clean
 clean:
