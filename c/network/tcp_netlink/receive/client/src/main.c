@@ -10,7 +10,7 @@
 #include 	"../lib/list.h"
 #include    "../lib/unp.h"
 
-int sock_fd;
+int netlink_fd;
 
 struct message_list 
 {
@@ -18,9 +18,9 @@ struct message_list
 	const char* str;
 };
 
-pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-int avail = 0; //just for test 
+//pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+//pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+//int avail = 0; //just for test 
 
 int ping_pong_kernel(void) 
 {
@@ -42,11 +42,13 @@ int ping_pong_kernel(void)
 
 void deliver_message() 
 {
+	/*
 	Pthread_mutex_lock(&mtx);
 	avail++;
     printf("we get a product\n");
 	Pthread_mutex_unlock(&mtx);
 	Pthread_cond_signal(&cond);
+	*/
 }
 
 static void* thread_comm_kernel(void *arg) 
@@ -58,19 +60,22 @@ static void* thread_comm_kernel(void *arg)
 		/* kernel module install success. So, we don't send information to kernel module. */
 		free_send_msg();
 
-		/* ok, we wait information from kernel. */
+		pthread_exit(0);
+	
+		/*
+		// ok, we wait information from kernel. 
 		int maxfdp1;
 		fd_set rset;
 		int n = 0;
 
 		for (;;) {
-			FD_SET(sock_fd, &rset);
-			maxfdp1 = sock_fd + 1;
+			FD_SET(netlink_fd, &rset);
+			maxfdp1 = netlink_fd + 1;
 			
 			Select(maxfdp1, &rset, NULL, NULL, NULL);
 			
-			/* socket is readable */
-			if (FD_ISSET(sock_fd, &rset)) {
+			// socket is readable 
+			if (FD_ISSET(netlink_fd, &rset)) {
 				n = rece_from_kernel();
 				if (n == 0) {
 					err_quit("kernel maybe terminated prematurely.");
@@ -83,6 +88,7 @@ static void* thread_comm_kernel(void *arg)
 				deliver_message();
 			}
 		}
+		*/
 	}
 
 	free_rece_msg(); 
@@ -114,14 +120,14 @@ main(int argc, char *argv[])
 		err_quit("netlink thread creation failed");
 	}
 	
-	res = pthread_create(&socket_tid, NULL, thread_comm_server, NULL);
-	if (res != 0) {
-		err_quit("tcp socket thread creation failed");
-	}
-
 	res = pthread_join(kernel_tid, NULL);
 	if (res != 0) {
 		err_quit("Thread join failed");
+	}
+
+	res = pthread_create(&socket_tid, NULL, thread_comm_server, NULL);
+	if (res != 0) {
+		err_quit("tcp socket thread creation failed");
 	}
 
 	res = pthread_join(socket_tid, NULL);

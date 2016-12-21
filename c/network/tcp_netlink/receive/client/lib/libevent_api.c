@@ -1,5 +1,5 @@
-#include "lx_sock.h"
 #include "libevent_api.h"
+#include "lx_netlink.h"
 #include "unp.h"
 
 void stdin_read_cb(struct bufferevent *bev, void *ctx)
@@ -33,21 +33,21 @@ void stdin_error_cb(struct bufferevent *bev, short event, void *arg)
     bufferevent_free(bev);
 }
 
+/*
 void wait_from_other()
 {
-	int numConsumed = 0;
 
     for (;;) {
         Pthread_mutex_lock(&mtx);
 
-        while (avail == 0) {            /* Wait for something to consume */
+        while (avail == 0) {            // Wait for something to consume 
             Pthread_cond_wait(&cond, &mtx);
         }
 
-        /* At this point, 'mtx' is locked... */
+        // At this point, 'mtx' is locked... 
 
-        while (avail > 0) {             /* Consume all available units */
-            /* Do something with produced unit */
+        while (avail > 0) {             // Consume all available units 
+            // Do something with produced unit 
             avail--;
             printf("we spend one\n");
         }
@@ -55,14 +55,25 @@ void wait_from_other()
         Pthread_mutex_unlock(&mtx);
     }
 }
+*/
+
+void event_handler(evutil_socket_t fd, short event, void *arg)
+{
+	if (event & EV_TIMEOUT) 
+	{
+  		printf("timeout\n");
+    	exit(1);
+  	} else if (event & EV_READ) {
+		debug_info();
+  	}
+
+}
 
 void eventcb(struct bufferevent *bev, short events, void *ptr)
 {
     if (events & BEV_EVENT_CONNECTED) {
          /* We're connected to 127.0.0.1:9877. Ordinarily we'd do
             something here, like start reading or writing. */
-
-
 		/*
         struct bufferevent *bev;
 		struct event_base *base = (struct event_base *)ptr;
@@ -72,8 +83,13 @@ void eventcb(struct bufferevent *bev, short events, void *ptr)
         bufferevent_setwatermark(bev, EV_READ, 0, MAX_LINE);
         bufferevent_enable(bev, EV_READ|EV_WRITE);
 		*/
-		wait_from_other();
+		//wait_from_other();
 
+  		struct event *netlink_event;
+		struct event_base *base = (struct event_base *)ptr;
+  		//netlink_event = event_new(base, netlink_fd, EV_READ | EV_PERSIST, event_handler, NULL);
+  		netlink_event = event_new(base, netlink_fd, EV_READ | EV_ET | EV_PERSIST, event_handler, NULL);
+  		event_add(netlink_event, NULL);
     } else if (events & BEV_EVENT_ERROR) {
          /* An error occured while connecting. */
         printf("connection error\n");

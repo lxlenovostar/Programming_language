@@ -1,4 +1,5 @@
 #include "lx_netlink.h"
+#include "unp.h"
 
 struct sockaddr_nl src_addr;
 struct sockaddr_nl dest_addr;
@@ -13,8 +14,8 @@ int init_sock()
 {
 	int res = 0;
 
-	sock_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
-	if (sock_fd < 0)
+	netlink_fd = socket(PF_NETLINK, SOCK_RAW, NETLINK_USER);
+	if (netlink_fd < 0)
 		return -1;
 
  	memset(&src_addr, 0, sizeof(src_addr));
@@ -22,7 +23,7 @@ int init_sock()
  	src_addr.nl_pid = getpid();  /* self pid */
  	src_addr.nl_groups = 0;  /* not in mcast groups */
 
- 	bind(sock_fd, (struct sockaddr*)&src_addr, sizeof(src_addr));
+ 	bind(netlink_fd, (struct sockaddr*)&src_addr, sizeof(src_addr));
 
  	memset(&dest_addr, 0, sizeof(dest_addr));
  	dest_addr.nl_family = AF_NETLINK;
@@ -86,7 +87,7 @@ int set_rece_msg()
 void send_to_kernel() 
 {
 	printf("Sending message to kernel\n");
- 	sendmsg(sock_fd, &send_msg, 0);
+ 	sendmsg(netlink_fd, &send_msg, 0);
 	printf("Waiting for message from kernel\n");
 }
 
@@ -95,7 +96,7 @@ int rece_from_kernel()
 	int n;
  	/* Read message from kernel */
  	memset(rece_nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
- 	n = recvmsg(sock_fd, &rece_msg, 0);
+ 	n = recvmsg(netlink_fd, &rece_msg, 0);
 
 	return n;
 }
@@ -112,7 +113,7 @@ int check_from_kernel()
 
  	/* Read message from kernel */
  	memset(rece_nlh, 0, NLMSG_SPACE(MAX_PAYLOAD));
- 	recvmsg(sock_fd, &rece_msg, 0);
+ 	recvmsg(netlink_fd, &rece_msg, 0);
  	printf("Received message payload:%s\n", (char *)NLMSG_DATA(rece_nlh));
 
 	if (strcmp(msg, (char *)NLMSG_DATA(rece_nlh)) == 0) 
@@ -150,7 +151,7 @@ void free_resource()
 	free_rece_msg();
 	
  	/* Close Netlink Socket */
-    close(sock_fd);
+    close(netlink_fd);
 }
 
 /*

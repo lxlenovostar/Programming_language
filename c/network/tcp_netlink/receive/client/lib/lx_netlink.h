@@ -9,7 +9,6 @@
 #define MAX_PAYLOAD 128  /* maximum payload size*/
 #define NETLINK_USER 31
 
-extern int sock_fd;
 
 int init_sock(void); 
 void free_send_msg(void); 
