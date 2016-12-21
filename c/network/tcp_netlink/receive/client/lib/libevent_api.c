@@ -1,4 +1,6 @@
+#include "lx_sock.h"
 #include "libevent_api.h"
+#include "unp.h"
 
 void stdin_read_cb(struct bufferevent *bev, void *ctx)
 {
@@ -31,6 +33,28 @@ void stdin_error_cb(struct bufferevent *bev, short event, void *arg)
     bufferevent_free(bev);
 }
 
+void wait_from_other()
+{
+	int numConsumed = 0;
+
+    for (;;) {
+        Pthread_mutex_lock(&mtx);
+
+        while (avail == 0) {            /* Wait for something to consume */
+            Pthread_cond_wait(&cond, &mtx);
+        }
+
+        /* At this point, 'mtx' is locked... */
+
+        while (avail > 0) {             /* Consume all available units */
+            /* Do something with produced unit */
+            avail--;
+            printf("we spend one\n");
+        }
+
+        Pthread_mutex_unlock(&mtx);
+    }
+}
 
 void eventcb(struct bufferevent *bev, short events, void *ptr)
 {
@@ -38,6 +62,8 @@ void eventcb(struct bufferevent *bev, short events, void *ptr)
          /* We're connected to 127.0.0.1:9877. Ordinarily we'd do
             something here, like start reading or writing. */
 
+
+		/*
         struct bufferevent *bev;
 		struct event_base *base = (struct event_base *)ptr;
         //evutil_make_socket_nonblocking(fileno(stdin));
@@ -45,7 +71,9 @@ void eventcb(struct bufferevent *bev, short events, void *ptr)
         bufferevent_setcb(bev, stdin_read_cb, NULL, stdin_error_cb, bev);
         bufferevent_setwatermark(bev, EV_READ, 0, MAX_LINE);
         bufferevent_enable(bev, EV_READ|EV_WRITE);
-		
+		*/
+		wait_from_other();
+
     } else if (events & BEV_EVENT_ERROR) {
          /* An error occured while connecting. */
         printf("connection error\n");

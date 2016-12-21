@@ -68,3 +68,7 @@ int Select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds, struc
 ssize_t Read(int fd, void *ptr, size_t nbytes);
 void Write(int fd, void *ptr, size_t nbytes);
 void Shutdown(int fd, int how);
+void Pthread_cond_signal(pthread_cond_t *cptr);
+void Pthread_cond_wait(pthread_cond_t *cptr, pthread_mutex_t *mptr);
+void Pthread_mutex_lock(pthread_mutex_t *mptr);
+void Pthread_mutex_unlock(pthread_mutex_t *mptr);

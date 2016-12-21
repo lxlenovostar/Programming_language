@@ -163,5 +163,50 @@ Select(int nfds, fd_set *readfds, fd_set *writefds, fd_set *exceptfds,
         err_sys("select error");
     return(n);      /* can return 0 on timeout */
 } 
-  
+
+void
+Pthread_cond_signal(pthread_cond_t *cptr)
+{
+    int     n;  
+
+    if ( (n = pthread_cond_signal(cptr)) == 0)
+        return;
+    errno = n;
+    err_sys("pthread_cond_signal error");
+}
+
+void
+Pthread_cond_wait(pthread_cond_t *cptr, pthread_mutex_t *mptr)
+{
+    int     n;  
+
+    if ( (n = pthread_cond_wait(cptr, mptr)) == 0)
+        return;
+    errno = n;
+    err_sys("pthread_cond_wait error");
+}
+
+/* include Pthread_mutex_lock */
+void
+Pthread_mutex_lock(pthread_mutex_t *mptr)
+{
+    int     n;  
+
+    if ( (n = pthread_mutex_lock(mptr)) == 0)
+        return;
+    errno = n;
+    err_sys("pthread_mutex_lock error");
+}
+/* end Pthread_mutex_lock */
+
+void
+Pthread_mutex_unlock(pthread_mutex_t *mptr)
+{
+    int     n;  
+
+    if ( (n = pthread_mutex_unlock(mptr)) == 0)
+        return;
+    errno = n;
+    err_sys("pthread_mutex_unlock error");
+}
 

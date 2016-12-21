@@ -7,8 +7,20 @@
 #include	"../lib/lx_netlink.h"
 #include	"../lib/lx_sock.h"
 #include	"../lib/libevent_api.h"
+#include 	"../lib/list.h"
+#include    "../lib/unp.h"
 
 int sock_fd;
+
+struct message_list 
+{
+	struct list_head list;
+	const char* str;
+};
+
+pthread_mutex_t mtx = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+int avail = 0; //just for test 
 
 int ping_pong_kernel(void) 
 {
@@ -28,13 +40,22 @@ int ping_pong_kernel(void)
 	return res;
 } 
 
+void deliver_message() 
+{
+	Pthread_mutex_lock(&mtx);
+	avail++;
+    printf("we get a product\n");
+	Pthread_mutex_unlock(&mtx);
+	Pthread_cond_signal(&cond);
+}
+
 static void* thread_comm_kernel(void *arg) 
 {
 	int res;
 	res = ping_pong_kernel();
 	
 	if (res == 0) {
-		/* kernel module install success. */
+		/* kernel module install success. So, we don't send information to kernel module. */
 		free_send_msg();
 
 		/* ok, we wait information from kernel. */
@@ -45,7 +66,6 @@ static void* thread_comm_kernel(void *arg)
 		for (;;) {
 			FD_SET(sock_fd, &rset);
 			maxfdp1 = sock_fd + 1;
-
 			
 			Select(maxfdp1, &rset, NULL, NULL, NULL);
 			
@@ -59,13 +79,10 @@ static void* thread_comm_kernel(void *arg)
 				}
 	
 				debug_info();
+
+				deliver_message();
 			}
-
 		}
-
-		/*
-         TODO 涉及线程互斥,通知有数据加入链表  
-         */
 	}
 
 	free_rece_msg(); 
@@ -85,9 +102,12 @@ main(int argc, char *argv[])
 {
     pthread_t kernel_tid, socket_tid;
 	int res;
+	struct message_list head;
 
 	//TODO 注册消息处理函数处理15信号，用于关闭进程。
 	//TODO 如何实现心跳 
+	
+  	INIT_LIST_HEAD(&head.list);
 
 	res = pthread_create(&kernel_tid, NULL, thread_comm_kernel, NULL);
 	if (res != 0) {
