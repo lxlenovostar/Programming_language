@@ -43,7 +43,7 @@ out:
 	mod_timer(&message_timer, jiffies + 10*HZ);	
 }
 
-void init_message_timer()
+void init_message_timer(void)
 {
 	init_timer(&message_timer);
 	message_timer.expires = jiffies + 10*HZ;
@@ -102,6 +102,7 @@ static int __init my_module_init(void)
 	if (res != 0)
 		printk(KERN_ERR "Initializing Netlink Error");
 
+	init_message_timer();
 	return res;
 }
 

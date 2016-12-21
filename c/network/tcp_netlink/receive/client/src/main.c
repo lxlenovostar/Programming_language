@@ -5,11 +5,13 @@
 #include    <pthread.h>
 #include	"../lib/error.h"
 #include	"../lib/lx_netlink.h"
+#include	"../lib/lx_sock.h"
 #include	"../lib/libevent_api.h"
 
 int sock_fd;
 
-int ping_pong_kernel(void) {
+int ping_pong_kernel(void) 
+{
 	int res = 0;
 
 	init_sock();
@@ -26,17 +28,15 @@ int ping_pong_kernel(void) {
 	return res;
 } 
 
-static void* thread_comm_kernel(void *arg) {
+static void* thread_comm_kernel(void *arg) 
+{
 	int res;
-
 	res = ping_pong_kernel();
 	
 	if (res == 0) {
 		/* kernel module install success. */
 		free_send_msg();
-		rece_from_kernel();
 
-		//TODO 使用select来实现对netlink的监控，从内核中收到的信息将打印出来。
 		/* ok, we wait information from kernel. */
 		int maxfdp1;
 		fd_set rset;
@@ -50,7 +50,7 @@ static void* thread_comm_kernel(void *arg) {
 			Select(maxfdp1, &rset, NULL, NULL, NULL);
 			
 			/* socket is readable */
-			if (FD_ISSET(sockfd, &rset)) {
+			if (FD_ISSET(sock_fd, &rset)) {
 				n = rece_from_kernel();
 				if (n == 0) {
 					err_quit("kernel maybe terminated prematurely.");
