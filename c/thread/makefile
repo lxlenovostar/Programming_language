@@ -1,5 +1,5 @@
 CFLAGS = -D_REENTRANT -Wall -g -lpthread
-objects = thread6
+objects = prod_condvar
 
 tcpser : $(objects)
 
