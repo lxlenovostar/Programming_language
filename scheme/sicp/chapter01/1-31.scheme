@@ -64,7 +64,19 @@
     	)
 	)
 
-	(/ (product term1 2.0 inc2 n) (product term2 3.0 inc2 (+ n 1)))
+	(define (product_i term a next b)
+		(define (iter a result)
+			(if (> a b)
+				result 
+				(iter (next a) (* result (term a)))
+			)
+		)
+
+		(iter a 1)
+	)
+
+
+	(/ (product_i term1 2.0 inc2 n) (product_i term2 3.0 inc2 (+ n 1)))
 )
 
 
