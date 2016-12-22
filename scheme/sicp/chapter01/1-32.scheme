@@ -1,0 +1,84 @@
+
+(define (even? n)
+	(= (remainder n 2) 0)
+)
+
+(define (odd? n)
+	(= (remainder n 2) 1)
+)
+
+(define (simpson_integral f a b n)
+	(define h (/ (- b a) n))
+	
+	(define (inc x) (+ x 1))
+
+	(define (y k)
+    	(f (+ a (* k h)))
+	)
+	
+	(define (term k)
+    	(* (cond ((odd? k) 4)
+           ((or (= k 0) (= k n)) 1)
+           ((even? k) 2))
+       	   (y k)
+		 )
+	  )
+
+	(define (sum term a next b)
+		(if (> a b)
+			0
+			(+ (term a) (sum term (next a) next b))
+    	)
+	)
+
+	(define (sum1 term a next b)
+		(define (iter a result)
+			(if (> a b)
+				result
+				(iter (next a) (+ result (term a)))
+			)
+		)
+		(iter a 0)
+	)
+
+	(* (sum1 term 0 inc n) (/ h 3.0))
+)
+
+
+(define (compute_c n)
+	
+	(define (inc2 x) (+ x 2))
+	
+	(define (term1 k)
+		(* k (+ k 2))
+	)
+
+	(define (term2 k)
+		(* k k)
+	)
+
+	(define (product term a next b)
+		(if (> a b)
+			1.0	
+			(* (term a) (product term (next a) next b))
+    	)
+	)
+
+	(define (product_i term a next b)
+		(define (iter a result)
+			(if (> a b)
+				result 
+				(iter (next a) (* result (term a)))
+			)
+		)
+
+		(iter a 1)
+	)
+
+
+	(/ (product_i term1 2.0 inc2 n) (product_i term2 3.0 inc2 (+ n 1)))
+)
+
+(define (accumulate combiner null-value term a next b) 
+	()
+)
