@@ -1,0 +1,38 @@
+(define (sum term a next b)
+	(if (> a b)
+		0
+		(+ (term a) (sum term (next a) next b))
+	)
+)
+
+(define (cont-frac n d k)
+	(if (= k 0)
+		(/ (n k) (d k))
+		(/ (n k) (+ (d k) (cont-frac n d (- k 1))))
+	)
+)
+
+(define (cont-frac-rec n d k)
+	(define (frac i)
+    	(if (< i k)
+        	(/ (n i) (+ (d i) (frac (+ i 1))))
+         	(/ (n i) (d i))
+		)
+	)
+    (frac 1)
+)
+
+(define (cont-frac-iter n d k)
+   (define (frac-iter i result)
+       (if (= i 0)
+           result
+           (frac-iter (- i 1) (/ (n i) (+ (d i) result)))
+		)
+	)
+
+   (frac-iter (- k 1) (/ (n k) (d k)))
+)
+
+(define (iter k)
+	(cont-frac-iter (lambda (i) 1.0) (lambda (i) 1.0) k)
+)
