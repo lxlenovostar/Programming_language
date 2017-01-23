@@ -1,3 +1,5 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-  
 from math import sqrt 
 
 # A dictionary of movie critics and their ratings of a small
@@ -21,9 +23,10 @@ critics={'Lisa Rose': {'Lady in the Water': 2.5, 'Snakes on a Plane': 3.5,
 'Toby': {'Snakes on a Plane':4.5,'You, Me and Dupree':1.0,'Superman Returns':4.0}}
 
 # Returns a distance-based similarity score for person1 and person2
-def sim_distance(prefs,person1,person2):
+def sim_distance(prefs, person1, person2):
 	# Get the list of shared_items
 	si={}
+
 	for item in prefs[person1]:
 		if item in prefs[person2]:
 			si[item]=1
@@ -32,9 +35,15 @@ def sim_distance(prefs,person1,person2):
 	if len(si) == 0: 
 		return 0
 
+	"""
+	练习代码
+	sum_of_squares = 0
+	for item in prefs[person1]:
+		if item in prefs[person2]:
+			sum_of_squares += sum([pow(prefs[person1][item] - prefs[person2][item],2)])
+	"""
 	# Add up the squares of all the differences
-	sum_of_squares = sum([pow(prefs[person1][item]-prefs[person2][item],2) for item in prefs[person1] if item in prefs[person2]])
-
+	sum_of_squares = sum([pow(prefs[person1][item] - prefs[person2][item],2) for item in prefs[person1] if item in prefs[person2]])
 	return 1/(1+sum_of_squares)
 
 # Returns the Pearson correlation coefficient for p1 and p2
