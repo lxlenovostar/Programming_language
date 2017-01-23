@@ -1,0 +1,7 @@
+(define (inc result)
+	(+ 1 result)
+)
+
+(define (double f)
+  (lambda (x) (f (f x))))
+
