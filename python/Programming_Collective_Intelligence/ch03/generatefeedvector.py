@@ -1,8 +1,12 @@
+#!/usr/bin/python
+# -*- coding: utf-8 -*-  
+
 import feedparser
 import re
 
 def getwords(html):
 	# Remove all the HTML tags
+    # ^代表非的意思，而+代表至少出现１次，[]代表正则表达中的字符组
 	txt = re.compile(r'<[^>]+>').sub('', html)
 
 	# Split words by all non-alpha characters
