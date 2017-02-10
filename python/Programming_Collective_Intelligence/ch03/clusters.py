@@ -113,6 +113,7 @@ def printclust(clust,labels=None,n=0):
     if clust.right!=None: 
         printclust(clust.right, labels=labels, n=n+1)
 
+#安装此模块　pip install Pillow
 from PIL import Image, ImageDraw
 
 def getheight(clust):
