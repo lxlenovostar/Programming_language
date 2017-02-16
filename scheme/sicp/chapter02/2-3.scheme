@@ -6,12 +6,7 @@
 
 (define (y-point point) (cdr point))
 
-
-(define (make-segment start-point-x start-point-y end-point-x end-point-y) 
-	(cons (make-point start-point-x start-point-y) (make-point end-point-x end-point-y))
-)
-
-(define (make-segment-new a b) (cons a b))
+(define (make-segment a b) (cons a b))
 
 (define (start-segment line) (car line))
 
@@ -31,3 +26,8 @@
 	(display (y-point p))
 	(display ")")
 )
+
+# TODO
+# 第一种方法　利用４条边来表示一个矩形　
+# 第二种方法　利用４个点来表示一个矩形　
+# 周长和面积的计算都是依据传入的两条边
