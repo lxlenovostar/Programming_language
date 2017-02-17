@@ -18,7 +18,7 @@
 		)
 )
 
-(define (print-point p)
+edefine (print-point p)
 	(newline)
 	(display "(")
 	(display (x-point p))
@@ -27,7 +27,41 @@
 	(display ")")
 )
 
-# TODO
-# 第一种方法　利用４条边来表示一个矩形　
-# 第二种方法　利用４个点来表示一个矩形　
-# 周长和面积的计算都是依据传入的两条边
+; rectangle constructor
+; join two opposite corners
+(define (make-rect a b) 
+	(cons a b)
+)
+
+; rectangle selectors
+(define (rect-width r)
+   (abs (- (x-point (car r)) (x-point (cdr r))))
+)
+
+ (rect-height r)
+   (abs (- (y-point (car r)) (y-point (cdr r))))
+)
+
+(define (rect-perimeter r)
+   (* 2 (+ (rect-width r) (rect-height r)))
+)
+
+(define (rect-area r)
+   (* (rect-width r) (rect-height r))
+)
+
+; rectangle constructor
+; combine a point, a width, and a height
+(define (make-rect a w h) 
+	(cons a (cons w h))
+)
+
+; rectangle selectors
+(define (rect-width r)
+   (car (cdr r))
+)
+
+(define (rect-height r)
+   (cdr (cdr r))
+)
+
