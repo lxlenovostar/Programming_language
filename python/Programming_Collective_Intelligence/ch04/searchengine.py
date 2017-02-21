@@ -147,6 +147,34 @@ class crawler:
         self.con.execute('create index urlfromidx on link(fromid)')
         self.dbcommit()
 
+    def calculatepagerank(self, iterations=20):
+        # clear out the current PageRank tables
+        self.con.execute('drop table if exists pagerank')
+        self.con.execute('create table pagerank(urlid primary key,score)')
+
+        # initialize every url with a PageRank of 1
+        self.con.execute('insert into pagerank select rowid, 1.0 from urllist')
+        self.dbcommit()
+
+        for i in range(iterations):
+            print "Iteration %d" % (i)
+            for (urlid,) in self.con.execute('select rowid from urllist'):
+                pr = 0.15
+
+                # Loop through all the pages that link to this one
+                for (linker,) in self.con.execute('select distinct fromid from link where toid=%d' % urlid):
+                    # Get the PageRank of the linker
+                    linkingpr = self.con.execute('select score from pagerank where urlid=%d' % linker).fetchone()[0]
+
+                    # Get the total number of links from the linker
+                    linkingcount=self.con.execute('select count(*) from link where fromid=%d' % linker).fetchone()[0]
+
+                    pr += 0.85*(linkingpr/linkingcount)
+
+            self.con.execute('update pagerank set score=%f where urlid=%d' % (pr, urlid))
+
+        self.dbcommit( )
+
 class searcher:
     def __init__(self,dbname):
         self.con=sqlite.connect(dbname)
@@ -198,7 +226,7 @@ class searcher:
         totalscores=dict([(row[0],0) for row in rows])
 
         # This is where you'll later put the scoring functions
-        weights=[]
+        weights=[(1.0, self.frequencyscore(rows)), (1.0,self.pagerankscore(rows))]
 
         for (weight,scores) in weights:
             for url in totalscores:
@@ -210,21 +238,42 @@ class searcher:
         return self.con.execute("select url from urllist where rowid=%d" % id).fetchone()[0]
 
     def query(self, q):
-        rows,wordids = self.getmatchrows(q)
+        rows, wordids = self.getmatchrows(q)
         scores = self.getscoredlist(rows, wordids)
         rankedscores = sorted([(score,url) for (url,score) in scores.items( )], reverse=1)
 
         for (score,urlid) in rankedscores[0:10]:
             print '%f\t%s' % (score,self.geturlname(urlid))
 
-	def normalizescores(self, scores, smallIsBetter=0):
-		vsmall = 0.00001 # Avoid division by zero errors
+    def normalizescores(self, scores, smallIsBetter=0):
+        vsmall = 0.00001 # Avoid division by zero errors
 
-		if smallIsBetter:
-			minscore = min(scores.values())
-			return dict([(u,float(minscore)/max(vsmall,l)) for (u,l) in scores.items()])
-		else:
-			maxscore = max(scores.values())
-			if maxscore == 0: 
-				maxscore=vsmall
-			return dict([(u,float(c)/maxscore) for (u,c) in scores.items()])
+        if smallIsBetter:
+            minscore = min(scores.values())
+            return dict([(u,float(minscore)/max(vsmall,l)) for (u,l) in scores.items()])
+        else:
+            maxscore = max(scores.values())
+            if maxscore == 0: 
+                maxscore=vsmall
+            return dict([(u,float(c)/maxscore) for (u,c) in scores.items()])
+
+    # rows 中的元素为tuple, 值类似于(w0.urlid,w0.location,w1.location)
+    def frequencyscore(self, rows):
+        counts = dict([(row[0],0) for row in rows])
+        for row in rows: 
+            counts[row[0]] += 1
+
+        return self.normalizescores(counts)
+
+    def inboundlinkscore(self, rows):
+        uniqueurls=set([row[0] for row in rows])
+        inboundcount= dict([(u, self.con.execute('select count(*) from link where toid=%d' % u).fetchone()[0]) for u in uniqueurls])
+
+        return self.normalizescores(inboundcount)
+
+    def pagerankscore(self,rows):
+        pageranks = dict([(row[0],self.con.execute('select score from pagerank where urlid=%d' % row[0]).fetchone()[0]) for row in rows])
+        maxrank = max(pageranks.values())
+        normalizedscores = dict([(u,float(l)/maxrank) for (u,l) in pageranks.items()])
+
+        return normalizedscores
