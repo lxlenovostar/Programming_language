@@ -1,0 +1,15 @@
+#dispatch 在内存中是如何实现？P124
+(define (newcons x y)
+	(define (dispatch m)
+		(cond ((= m 0) x)
+			  ((= m 1) y)
+			  (else (error "Argument not 0 or 1: CONS" m))
+		)
+	)
+	
+	dispatch
+)
+
+(define (newcar z) (z 0))
+
+(define (newcdr z) (z 1))
