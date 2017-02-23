@@ -4,6 +4,9 @@
 from math import tanh
 from pysqlite2 import dbapi2 as sqlite
 
+def dtanh(y):
+    return 1.0 - y*y
+
 class searchnet:
     def __init__(self, dbname):
         self.con = sqlite.connect(dbname)
@@ -122,3 +125,67 @@ class searchnet:
     def getresult(self,wordids, urlids):
         self.setupnetwork(wordids,urlids)
         return self.feedforward()
+
+    def backPropagate(self, targets, N=0.5):
+        # calculate errors for output
+        output_deltas = [0.0] * len(self.urlids)
+
+	    # Calculate the difference between the node’s current output and what it should be	
+        for k in range(len(self.urlids)):
+            error = targets[k] - self.ao[k]
+			# Use the dtanh function to determine how much the node’s total input has to change.
+            output_deltas[k] = dtanh(self.ao[k]) * error
+
+        # calculate errors for hidden layer
+        hidden_deltas = [0.0] * len(self.hiddenids)
+
+        for j in range(len(self.hiddenids)):
+            error = 0.0
+            for k in range(len(self.urlids)):
+				# 这里没有理解 P104
+				# Change the output of the node by the sum of the strength of each output link
+				# multiplied by how much its target node has to change.
+                error = error + output_deltas[k]*self.wo[j][k]
+			# Use the dtanh function to determine how much the node’s total input has to change.
+            hidden_deltas[j] = dtanh(self.ah[j]) * error
+
+        # update output weights
+        for j in range(len(self.hiddenids)):
+            for k in range(len(self.urlids)):
+				# Change the strength of every incoming link in proportion to the link’s current
+				# strength and the learning rate.
+                change = output_deltas[k] * self.ah[j]
+                self.wo[j][k] = self.wo[j][k] + N*change
+
+        # update input weights
+        for i in range(len(self.wordids)):
+            for j in range(len(self.hiddenids)):
+				# Change the strength of every input link in proportion to the link’s current
+				# strength and the learning rate.
+                change = hidden_deltas[j] * self.ai[i]
+                self.wi[i][j] = self.wi[i][j] + N*change
+
+    def trainquery(self,wordids,urlids,selectedurl):
+        # generate a hidden node if necessary
+        self.generatehiddennode(wordids, urlids)
+        self.setupnetwork(wordids, urlids)
+        self.feedforward()
+        targets = [0.0]*len(urlids)
+		# it should be pushed toward 1 if the user clicked on that
+		# result, and pushed toward 0 if he did not. 
+        targets[urlids.index(selectedurl)] = 1.0
+        print 'targets : %s' % targets
+        error = self.backPropagate(targets)
+        self.updatedatabase()
+
+    def updatedatabase(self):
+        # set them to database values
+        for i in range(len(self.wordids)):
+            for j in range(len(self.hiddenids)):
+                self.setstrength(self.wordids[i],self. hiddenids[j],0,self.wi[i][j])
+
+        for j in range(len(self.hiddenids)):
+            for k in range(len(self.urlids)):
+                self.setstrength(self.hiddenids[j],self.urlids[k],1,self.wo[j][k])
+
+        self.con.commit()

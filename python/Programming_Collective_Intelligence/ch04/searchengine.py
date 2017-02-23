@@ -6,6 +6,9 @@ from BeautifulSoup import *
 from urlparse import urljoin
 from pysqlite2 import dbapi2 as sqlite
 
+import nn
+mynet=nn.searchnet('nn.db')
+
 # Create a list of words to ignore
 ignorewords=set(['the','of','to','and','a','in','is','it'])
 
@@ -244,6 +247,8 @@ class searcher:
 
         for (score,urlid) in rankedscores[0:10]:
             print '%f\t%s' % (score,self.geturlname(urlid))
+	
+		return wordids,[r[1] for r in rankedscores[0:10]]
 
     def normalizescores(self, scores, smallIsBetter=0):
         vsmall = 0.00001 # Avoid division by zero errors
@@ -277,3 +282,12 @@ class searcher:
         normalizedscores = dict([(u,float(l)/maxrank) for (u,l) in pageranks.items()])
 
         return normalizedscores
+
+	# In practice, it’s better to hold off on including it as part of your scoring until
+	# the network has been trained on a large number of different examples.
+	def nnscore(self, rows, wordids):
+		# Get unique URL IDs as an ordered list
+		urlids=[urlid for urlid in set([row[0] for row in rows])]
+		nnres=mynet.getresult(wordids,urlids)
+		scores=dict([(urlids[i],nnres[i]) for i in range(len(urlids))])
+		return self.normalizescores(scores)
