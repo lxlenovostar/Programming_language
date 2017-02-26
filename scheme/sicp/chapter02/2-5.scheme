@@ -1,0 +1,54 @@
+(define (pow x power)
+	(define (help num result)
+		(
+			if (= num 0) result
+			(help (- num 1) (* result power))
+		)
+	)
+
+	(help x 1)
+)
+
+(define (div x power)
+	(define (help value result)
+		(
+			if (= (gcd value power) 1) result
+			(help (/ value power) (+ 1 result))
+		)
+	)
+
+	(help x 0)
+)
+
+(define (5cons x y)
+	(* (pow x 2) (pow y 3))
+)
+
+(define (5car z)
+	(div z 2)
+)
+
+(define (5cdr z)
+	(div z 3)
+)
+
+#优秀的实现
+(define (cons a b)
+  (* (expt 2 a) (expt 3 b))
+)
+
+(define (num-divs n d)
+  (define (iter x result)
+    (if (= 0 (remainder x d))
+        (iter (/ x d) (+ 1 result))
+        result))
+  (iter n 0)
+)
+
+(define (car x)
+  (num-divs x 2)
+)
+
+(define (cdr x)
+  (num-divs x 3)
+)
