@@ -74,21 +74,86 @@ def schedulecost(sol):
 
 	return totalprice + totalwait
 
-def randomoptimize(domain,costf):
+def randomoptimize(domain, costf):
 	best=999999999
 	bestr=None
 
-	for i in range(1000):
+	for i in range(100):
 		# Create a random solution
-		# １.需要理解　randint 
-        # 2. 需要理解外面怎么可以知道　r 
-		r=[random.randint(domain[i][0],domain[i][1]) for i in range(len(domain))]
+		r = [random.randint(domain[i][0], domain[i][1]) for i in range(len(domain))]
 
 		# Get the cost
-		cost=costf(r)
+		cost = costf(r)
 		
 		# Compare it to the best one so far
 		if cost < best:
 			best=cost
 			bestr=r
+
 	return r
+
+def hillclimb(domain, costf):
+	# Create a random solution
+	sol = [random.randint(domain[i][0], domain[i][1]) for i in range(len(domain))]
+
+	# Main loop
+	while 1:
+		# Create list of neighboring solutions
+		neighbors=[]
+
+		for j in range(len(domain)):
+			# One away in each direction
+			if sol[j] > domain[j][0]:
+				neighbors.append(sol[0:j] + [sol[j] - 1] + sol[j+1:])
+			if sol[j] < domain[j][1]:
+				neighbors.append(sol[0:j] + [sol[j] + 1] + sol[j+1:])
+
+		# See what the best solution amongst the neighbors is
+		current = costf(sol)
+		best = current
+
+		for j in range(len(neighbors)):
+			cost = costf(neighbors[j])
+			if cost < best:
+				best = cost
+				sol = neighbors[j]
+
+		# If there's no improvement, then we've reached the top
+		if best == current:
+			break
+
+	return sol
+
+def annealingoptimize(domain, costf, T=10000.0, cool=0.95, step=1):
+	# Initialize the values randomly
+	vec=[float(random.randint(domain[i][0], domain[i][1])) for i in range(len(domain))]
+
+	while T > 0.1:
+		# Choose one of the indices
+		i = random.randint(0,len(domain)-1)
+
+		# Choose a direction to change it
+		dir = random.randint(-step,step)
+		
+		# Create a new list with one of the values changed
+		vecb = vec[:]
+		vecb[i] += dir
+		if vecb[i] < domain[i][0]: 
+			vecb[i] = domain[i][0]
+		elif vecb[i] > domain[i][1]: 
+			vecb[i] = domain[i][1]
+
+		# Calculate the current cost and the new cost
+		ea = costf(vec)
+		eb = costf(vecb)
+		p = pow(math.e, -(eb-ea)/T)
+
+		# Is it better, or does it make the probability cutoff?
+	    # 这个概率的选择，并不理解。
+		if (eb < ea or random.random() < p):
+			vec = vecb
+
+		# Decrease the temperature
+		T = T*cool
+
+	return vec
