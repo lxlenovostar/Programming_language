@@ -1,6 +1,3 @@
-package org.dataalgorithms.chap01.util;
-
-
 import scala.Tuple2;
 import java.util.Comparator;
 import java.io.Serializable;

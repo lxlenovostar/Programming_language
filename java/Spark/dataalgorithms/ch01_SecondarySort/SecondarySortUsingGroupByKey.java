@@ -1,6 +1,3 @@
-package org.dataalgorithms.chap01.spark;
-
-
 // STEP-0: import required Java/Spark classes.
 import scala.Tuple2;
 
@@ -13,10 +10,7 @@ import org.apache.spark.api.java.function.PairFunction;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Collections;
-//
-import org.dataalgorithms.util.SparkUtil;
-import org.dataalgorithms.chap01.util.SparkTupleComparator;
-        
+
 /** 
  * SecondarySortUsingGroupByKey class implements the secondary sort design pattern 
  by sorting reducer values in memory/RAM.
@@ -66,10 +60,11 @@ public class SecondarySortUsingGroupByKey {
 
     // maybe error
     // STEP-2: Connect to the Sark master by creating JavaSparkContext object
-    final JavaSparkContext ctx = SparkUtil.createJavaSparkContext();
+    // maybe error
+    final JavaSparkContext ctx = SparkUtil.createJavaSparkContext("SecondarySort");
 
     // STEP-3: Use ctx to create JavaRDD<String>
-    //  input record format: <name><,><time><,><value>
+    // input record format: <name><,><time><,><value>
     JavaRDD<String> lines = ctx.textFile(inputPath, 1);
 
 	// STEP-4: create (key, value) pairs from JavaRDD<String> where
@@ -92,7 +87,7 @@ public class SecondarySortUsingGroupByKey {
     List<Tuple2<String, Tuple2<Integer, Integer>>> output = pairs.collect();
     for (Tuple2 t : output) {
        Tuple2<Integer, Integer> timevalue = (Tuple2<Integer, Integer>) t._2;
-       System.out.println(t._1 + "," + timevalue._1 + "," + timevalue._1); //maybe error
+       System.out.println(t._1 + "," + timevalue._1 + "," + timevalue._2); //maybe error
     }
 
     // STEP-6: We group JavaPairRDD<> elements by the key ({name}). 
