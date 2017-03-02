@@ -82,30 +82,70 @@ class classifier:
         # Increment the count for this category
         self.incc(cat)
 
-    def fprob(self,f,cat):
+    def fprob(self, f, cat):
         if self.catcount(cat)==0: return 0
 
         # The total number of times this feature appeared in this
         # category divided by the total number of items in this category
-        return self.fcount(f,cat)/self.catcount(cat)
+        return self.fcount(f, cat) / self.catcount(cat)
 
     # a weight of 1 means the assumed probability is weighted the
     # same as one word. 
-    def weightedprob(self,f,cat,prf,weight=1.0,ap=0.5):
+    def weightedprob(self, f, cat, prf, weight=1.0, ap=0.5):
         # Calculate current probability
-        basicprob=prf(f,cat)
+        basicprob = prf(f,cat)
         # Count the number of times this feature has appeared in
         # all categories
-        totals=sum([self.fcount(f,c) for c in self.categories( )])
+        totals=sum([self.fcount(f,c) for c in self.categories()])
         # Calculate the weighted average
-        bp=((weight*ap)+(totals*basicprob))/(weight+totals)
+        bp = ((weight*ap) + (totals*basicprob)) / (weight+totals)
         return bp
 
-    class naivebayes(classifier):
-        def docprob(self,item,cat):
-            features=self.getfeatures(item)
+class naivebayes(classifier):
+    def __init__(self, getfeatures):
+        classifier.__init__(self,getfeatures)
+        self.thresholds={}
 
-            # Multiply the probabilities of all the features together
-            p=1
-            for f in features: p*=self.weightedprob(f,cat,self.fprob)
-            return p
+    def docprob(self,item,cat):
+        features=self.getfeatures(item)
+
+        # Multiply the probabilities of all the features together
+        p=1
+        for f in features: p*=self.weightedprob(f,cat,self.fprob)
+        return p
+
+    # 根据贝叶斯公式
+    def prob(self,item,cat):
+        catprob = self.catcount(cat)/self.totalcount()
+        docprob = self.docprob(item,cat)
+
+        return docprob*catprob
+
+    def setthreshold(self,cat,t):
+        self.thresholds[cat]=t
+
+    def getthreshold(self,cat):
+        if cat not in self.thresholds: return 1.0
+        return self.thresholds[cat]
+
+    def classify(self, item, default=None):
+        probs={}
+
+        # Find the category with the highest probability
+        max=0.0
+
+        for cat in self.categories():
+            probs[cat]=self.prob(item,cat)
+            if probs[cat] > max:
+                max = probs[cat]
+                best = cat
+
+        # Make sure the probability exceeds threshold*next best
+        for cat in probs:
+            if cat == best: 
+                continue
+
+            if probs[cat]*self.getthreshold(best) > probs[best]: 
+                return default
+        
+        return best
