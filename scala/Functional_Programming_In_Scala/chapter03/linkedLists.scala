@@ -18,8 +18,14 @@ sealed trait List[+A]
  which means that in conjunction with the variance annotation, Nil can be considered
  a List[Int], a List[Double], and so on, exactly as we want.
  */
+/* Objects are used to hold single instances of a class. Often used for factories. */
 case object Nil extends List[Nothing]
 
+/*
+ * 样本类
+ * 1. 使用样本类可以方便得存储和匹配类的内容。你不用new关键字就可以创建它们。
+ * 2. 样本类就是被设计用在模式匹配中的。
+ * */
 case class Cons[+A](head: A, tail: List[A]) extends List[A]
 
 object List {
@@ -34,6 +40,14 @@ object List {
 		case Cons(x,xs) => x * product(xs)
 	}
 
+    /*
+     * The function apply in the object List is a variadic function, meaning it accepts zero
+     * or more arguments of type A. 
+     *
+     * The argument as will be bound to a Seq[A] which has the functions head (returns the 
+     * first element) and tail (returns all elements but the first). The special _* type 
+     * annotation allows us to pass a Seq to a variadic method.
+     * */
 	def apply[A](as: A*): List[A] =
 		if (as.isEmpty) Nil
 		else Cons(as.head, apply(as.tail: _*))
