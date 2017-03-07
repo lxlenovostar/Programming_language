@@ -89,6 +89,11 @@ object List {
         case _ => l
     }
 
+    def dropWhileInfer[A](as: List[A])(f: A => Boolean): List[A] =
+      as match {
+        case Cons(h,t) if f(h) => dropWhile(t)(f)
+        case _ => as
+      }
 
     def append[A](a1: List[A], a2: List[A]): List[A] = a1 match {
         case Nil => a2
