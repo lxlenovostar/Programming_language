@@ -75,3 +75,17 @@ def giniimpurity(rows):
             imp += p1*p2
     return imp
 
+# Entropy, in information theory, is the amount of disorder in a 
+# set—basically, how mixed a set is. 
+# Entropy is the sum of p(x)log(p(x)) across all
+# the different possible results
+def entropy(rows):
+    from math import log
+    log2 = lambda x:log(x)/log(2)
+    results= uniquecounts(rows)
+    # Now calculate the entropy
+    ent=0.0
+    for r in results.keys( ):
+        p=float(results[r])/len(rows)
+        ent=ent-p*log2(p)
+    return ent
