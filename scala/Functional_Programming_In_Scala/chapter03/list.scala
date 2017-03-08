@@ -105,11 +105,35 @@ object List {
 		case Cons(x,xs) => x + sum(xs)
 	}
 
+    def productNew(ds: List[Double]): Double = ds match {
+        case Nil => 1.0
+        case Cons(x, xs) => x * productNew(xs)
+    }
+
 	def product(ds: List[Double]): Double = ds match {
 		case Nil => 1.0
 		case Cons(0.0, _) => 0.0
 		case Cons(x,xs) => x * product(xs)
 	}
+
+    /*
+     * Again, placing f in its own argument group after as and z lets type inference
+     * determine the input types to f.
+     * */
+    def foldRight[A,B](as: List[A], z: B)(f: (A, B) => B): B =
+      as match {
+        case Nil => z
+        case Cons(x, xs) => f(x, foldRight(xs, z)(f))
+      }
+
+    def sum2(ns: List[Int]) =
+      foldRight(ns, 0)((x,y) => x + y)
+
+    /*
+     * _ * _ is more concise notation for (x,y) => x * y
+     * */
+    def product2(ns: List[Double]) =
+      foldRight(ns, 1.0)(_ * _)
 
     /*
      * The function apply in the object List is a variadic function, meaning it accepts zero
