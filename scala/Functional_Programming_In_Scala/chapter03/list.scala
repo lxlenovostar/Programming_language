@@ -91,7 +91,7 @@ object List {
 
     def dropWhileInfer[A](as: List[A])(f: A => Boolean): List[A] =
       as match {
-        case Cons(h,t) if f(h) => dropWhile(t)(f)
+        case Cons(h,t) if f(h) => dropWhileInfer(t)(f)
         case _ => as
       }
 
@@ -115,6 +115,21 @@ object List {
 		case Cons(0.0, _) => 0.0
 		case Cons(x,xs) => x * product(xs)
 	}
+    
+    /*
+     * foldRight(List(1,2,3), Nil:List[Int])(Cons(_,_))
+     *
+     * We get back the original list! Why is that? As we mentioned earlier, one way of thinking about 
+     * what `foldRight` "does" is it replaces the `Nil` constructor of the list with the `z` argument, 
+     * and it replaces the `Cons` constructor with the given function, `f`. If we just supply `Nil` for 
+     * `z` and `Cons` for `f`, then we get back the input list.
+     *
+     * foldRight(Cons(1, Cons(2, Cons(3, Nil))), Nil:List[Int])(Cons(_,_))
+     * Cons(1, foldRight(Cons(2, Cons(3, Nil)), Nil:List[Int])(Cons(_,_)))
+     * Cons(1, Cons(2, foldRight(Cons(3, Nil), Nil:List[Int])(Cons(_,_))))
+     * Cons(1, Cons(2, Cons(3, foldRight(Nil, Nil:List[Int])(Cons(_,_)))))
+     * Cons(1, Cons(2, Cons(3, Nil))) 
+     * */
 
     /*
      * Again, placing f in its own argument group after as and z lets type inference
@@ -126,11 +141,47 @@ object List {
         case Cons(x, xs) => f(x, foldRight(xs, z)(f))
       }
 
+    /*
+     * 使用 tail-recursive 实现
+     * */
+    /* 
+     * It's common practice to annotate functions you expect to be tail-recursive with the `tailrec` annotation. 
+     * If the function is not tail-recursive, it will yield a compile error, rather than silently compiling 
+     * the code and resulting in greater stack space usage at runtime. 
+     * */
+    @annotation.tailrec
+    def foldLeft[A,B](as: List[A], z: B)(f: (B, A) => B): B =  
+      as match {
+        case Nil => z
+        case Cons(x, xs) =>  foldLeft(xs, f(z, x))(f)
+    }
+
+    /*
+     * Compute the length of a list using foldRight.
+     * */
+    def length[A](as: List[A]) : Int = 
+      foldRight(as, 0)((x, y) => 1 + y)
+
+    def length2[A](l: List[A]): Int = 
+      foldLeft(l, 0)((acc,h) => acc + 1)
+
     def sum2(ns: List[Int]) =
       foldRight(ns, 0)((x,y) => x + y)
 
+    def sum3(ns: List[Int]) =
+      foldLeft(ns, 0)((x,y) => x + y)
+
+    def product3(l: List[Double]) = 
+      foldLeft(l, 1.0)(_ * _)
+  
     /*
      * _ * _ is more concise notation for (x,y) => x * y
+     *
+     *  
+     * ex3.7 No, this is not possible! The reason is because _before_ we ever call our function, 
+     * `f`, we evaluate its argument, which in the case of `foldRight` means traversing the 
+     * list all the way to the end. We need _non-strict_ evaluation to support early termination
+     * ---we discuss this in chapter 5.
      * */
     def product2(ns: List[Double]) =
       foldRight(ns, 1.0)(_ * _)
