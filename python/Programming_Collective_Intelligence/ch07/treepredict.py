@@ -28,18 +28,19 @@ class decisionnode:
 
 # Divides a set on a specific column. Can handle numeric
 # or nominal values
-def divideset(rows,column,value):
+def divideset(rows, column, value):
     # Make a function that tells us if a row is in
     # the first group (true) or the second group (false)
     split_function=None
-    if isinstance(value,int) or isinstance(value,float):
-        split_function=lambda row:row[column]>=value
+    if isinstance(value, int) or isinstance(value, float):
+        split_function = lambda row:row[column] >= value
     else:
         split_function=lambda row:row[column]==value
-        # Divide the rows into two sets and return them
-        set1=[row for row in rows if split_function(row)]
-        set2=[row for row in rows if not split_function(row)]
-        return (set1,set2)
+        
+    # Divide the rows into two sets and return them
+    set1=[row for row in rows if split_function(row)]
+    set2=[row for row in rows if not split_function(row)]
+    return (set1,set2)
 
 # Create counts of possible results (the last column of
 # each row is the result)
@@ -91,36 +92,74 @@ def entropy(rows):
     return ent
 
 def buildtree(rows, scoref=entropy):
-    if len(rows)==0: return decisionnode()
+    if len(rows) == 0: 
+        return decisionnode()
+
     current_score = scoref(rows)
 
     # Set up some variables to track the best criteria
-    best_gain=0.0
-    best_criteria=None
-    best_sets=None
+    best_gain = 0.0
+    best_criteria = None
+    best_sets = None
 
-    column_count=len(rows[0])-1
-    for col in range(0,column_count):
+    column_count = len(rows[0])-1
+    for col in range(0, column_count):
         # Generate the list of different values in this column
-        column_values={}
+        column_values = {}
         for row in rows:
             column_values[row[col]]=1
         # Now try dividing the rows up for each value in this column
-        for value in column_values.keys( ):
-            (set1,set2)=divideset(rows,col,value)
+        for value in column_values.keys():
+            (set1, set2) = divideset(rows, col, value)
             
             # Information gain
-            p=float(len(set1))/len(rows)
-            gain=current_score-p*scoref(set1)-(1-p)*scoref(set2)
-            if gain>best_gain and len(set1)>0 and len(set2)>0:
+            p = float(len(set1))/len(rows)
+            gain = current_score - p*scoref(set1) - (1-p)*scoref(set2)
+            if gain > best_gain and len(set1)>0 and len(set2)>0:
                 best_gain=gain
-                best_criteria=(col,value)
-                best_sets=(set1,set2)
+                best_criteria=(col, value)
+                best_sets=(set1, set2)
                     
     # Create the subbranches
-    if best_gain>0:
-        trueBranch=buildtree(best_sets[0])
-        falseBranch=buildtree(best_sets[1])
+    if best_gain > 0:
+        trueBranch = buildtree(best_sets[0])
+        falseBranch = buildtree(best_sets[1])
         return decisionnode(col=best_criteria[0], value=best_criteria[1], tb=trueBranch, fb=falseBranch)
     else:
         return decisionnode(results=uniquecounts(rows))
+
+def printtree(tree, indent=''):
+    # Is this a leaf node?
+    if tree.results != None:
+        print str(tree.results)
+    else:
+        # Print the criteria
+        print str(tree.col)+':'+str(tree.value)+'? '
+        # Print the branches
+        print indent+'T->',
+        printtree(tree.tb,indent+' ')
+        print indent+'F->',
+        printtree(tree.fb,indent+' ')
+
+def classify(observation, tree):
+    if tree.results != None:
+        return tree.results
+    else:
+        v = observation[tree.col]
+        print tree.col
+        print v
+        branch=None
+        if isinstance(v, int) or isinstance(v, float):
+            print '1'
+            if v >= tree.value: 
+                branch=tree.tb
+            else: 
+                branch=tree.fb
+        else:
+            print '2'
+            if v == tree.value: 
+                branch = tree.tb
+            else: 
+                branch = tree.fb
+        return classify(observation, branch)
+
