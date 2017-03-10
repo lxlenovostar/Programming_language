@@ -95,11 +95,6 @@ object List {
         case _ => as
       }
 
-    def append[A](a1: List[A], a2: List[A]): List[A] = a1 match {
-        case Nil => a2
-        case Cons(h,t) => Cons(h, append(t, a2))
-    }
-
 	def sum(ints: List[Int]): Int = ints match {
 		case Nil => 0
 		case Cons(x,xs) => x + sum(xs)
@@ -115,7 +110,7 @@ object List {
 		case Cons(0.0, _) => 0.0
 		case Cons(x,xs) => x * product(xs)
 	}
-    
+
     /*
      * foldRight(List(1,2,3), Nil:List[Int])(Cons(_,_))
      *
@@ -142,6 +137,23 @@ object List {
       }
 
     /*
+     * Since `append` takes time proportional to its first argument, and this first argument 
+     * never grows because of the right-associativity of `foldRight`, this function is linear in 
+     * the total length of all lists. You may want to try tracing the execution of the implementation 
+     * on paper to convince yourself that this works.
+     *
+     * Note that we're simply referencing the `append` function, without writing something 
+     * like `(x,y) => append(x,y)` or `append(_,_)`. In Scala there is a rather arbitrary distinction 
+     * between functions defined as _methods_, which are introduced with the `def` keyword, and function 
+     * values, which are the first-class objects we can pass to other functions, put in collections, and 
+     * so on. This is a case where Scala lets us pretend the distinction doesn't exist. In other cases, you'll 
+     * be forced to write `append _` (to convert a `def` to a function value) or even 
+     * `(x: List[A], y: List[A]) => append(x,y)` if the function is polymorphic and the type arguments aren't known. 
+     * */
+    def concat[A](l: List[List[A]]): List[A] = 
+        foldRight(l, Nil: List[A])(append)
+
+    /*
      * 使用 tail-recursive 实现
      * */
     /* 
@@ -155,6 +167,27 @@ object List {
         case Nil => z
         case Cons(x, xs) =>  foldLeft(xs, f(z, x))(f)
     }
+
+    def append[A](a1: List[A], a2: List[A]): List[A] = a1 match {
+        case Nil => a2
+        case Cons(h,t) => Cons(h, append(t, a2))
+    }
+
+    def addOne(a1: List[Int]): List[Int] = 
+      foldRight(a1, Nil:List[Int])((x, y) => Cons(x+1, y))
+
+    def doubleToString(a1: List[Double]): List[String] = 
+      foldRight(a1, Nil:List[String])((x, y) => Cons(x.toString, y))
+    /*
+     * `append` simply replaces the `Nil` constructor of the first list with the second list, 
+     * which is exactly the operation performed by `foldRight`.
+     * */
+    def append1[A](a1: List[A], a2: List[A]): List[A] = 
+      foldRight(a1, a2)(Cons(_, _))
+    /*
+     * 这里用foldLeft是不可以，注意f函数的声明。
+     * */
+    //foldLeft(a1, a2)((x: A, y: List[A]) => Cons(x, y))
 
     /*
      * Compute the length of a list using foldRight.
@@ -170,6 +203,9 @@ object List {
 
     def sum3(ns: List[Int]) =
       foldLeft(ns, 0)((x,y) => x + y)
+
+    def reverse[A](l: List[A]) : List[A] = 
+       foldLeft(l, List[A]())((acc, h) => Cons(h, acc))
 
     def product3(l: List[Double]) = 
       foldLeft(l, 1.0)(_ * _)
@@ -197,5 +233,6 @@ object List {
 	def apply[A](as: A*): List[A] =
 		if (as.isEmpty) Nil
 		else Cons(as.head, apply(as.tail: _*))
+
 }
 
