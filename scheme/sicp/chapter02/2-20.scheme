@@ -1,0 +1,17 @@
+(define (even? n)
+	(= (remainder n 2) 0)
+)
+(define (check-even-odd n m)
+	(= (remainder n 2) (remainder m 2))
+)
+
+(define (same-parity value . value-list)
+	(define (iter items)
+		(cond ((null? items) '())
+		  	((check-even-odd value (car items)) (cons (car items) (iter (cdr items))))
+		  	(else (iter (cdr items)))
+		)
+	)
+
+	(cons value (iter value-list))
+)
