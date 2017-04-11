@@ -71,6 +71,9 @@ object List {
         go(l)
     }
 
+    /*
+     * 在函数子句中使用了 pattern match.
+     * */
 	def drop[A](l: List[A], n: Int): List[A] = 
         if (n <= 0) l
         else l match {
