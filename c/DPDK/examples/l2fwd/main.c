@@ -35,8 +35,6 @@
  * http://dpdk.org/doc/guides/sample_app_ug/l2_forward_job_stats.html
  *
  * TODO: 
- * 1. 为什么TX需要特别分配缓冲区，而收包不需要。
- * 2. 看到14.4.7. Main loop
  * */
 #include <stdio.h>
 #include <stdlib.h>
@@ -124,6 +122,19 @@ struct lcore_queue_conf {
 } __rte_cache_aligned;
 struct lcore_queue_conf lcore_queue_conf[RTE_MAX_LCORE];
 
+/*
+ * rte_eth_dev_tx_buffer 
+ *
+ * #include <rte_ethdev.h>
+ *
+ * Data Fields
+ * uint16_t 	size
+ * uint16_t 	length
+ * struct rte_mbuf * 	pkts []
+ *
+ * Detailed Description
+ * Structure used to buffer packets for future TX Used by APIs rte_eth_tx_buffer and rte_eth_tx_buffer_flush
+ * */
 static struct rte_eth_dev_tx_buffer *tx_buffer[RTE_MAX_ETHPORTS];
 
 static const struct rte_eth_conf port_conf = {
@@ -229,6 +240,32 @@ l2fwd_simple_forward(struct rte_mbuf *m, unsigned portid)
 		l2fwd_mac_updating(m, dst_port);
 
 	buffer = tx_buffer[dst_port];
+	/*
+	 * static uint16_t rte_eth_tx_buffer(uint8_t 	port_id,
+	 * 									uint16_t 	queue_id,
+	 * 									struct rte_eth_dev_tx_buffer * 	buffer,
+	 * 									struct rte_mbuf * 	tx_pkt 
+	 * )		
+	 * Buffer a single packet for future transmission on a port and queue.
+	 *
+	 * This function takes a single mbuf/packet and buffers it for later transmission on the particular port and 
+	 * queue specified. Once the buffer is full of packets, an attempt will be made to transmit all the buffered packets. 
+	 * In case of error, where not all packets can be transmitted, a callback is called with the unsent packets as 
+	 * a parameter. If no callback is explicitly set up, the unsent packets are just freed back to the owning mempool. 
+	 * The function returns the number of packets actually sent i.e. 0 if no buffer flush occurred, otherwise the 
+	 * number of packets successfully flushed.
+	 *
+	 * Parameters
+	 * port_id	The port identifier of the Ethernet device.
+	 * queue_id	The index of the transmit queue through which output packets must be sent. The 
+	 * 			value must be in the range [0, nb_tx_queue - 1] previously supplied to rte_eth_dev_configure().
+	 * buffer	Buffer used to collect packets to be sent.
+	 * tx_pkt	Pointer to the packet mbuf to be sent.
+	 *
+	 * Returns
+	 * 0 = packet has been buffered for later transmission N > 0 = packet has been buffered, and the 
+	 * buffer was subsequently flushed, causing N packets to be sent, and the error callback to be called for the rest.
+	 * */
 	sent = rte_eth_tx_buffer(dst_port, 0, buffer, m);
 	if (sent)
 		port_statistics[dst_port].tx += sent;
@@ -252,7 +289,16 @@ l2fwd_main_loop(void)
 	prev_tsc = 0;
 	timer_tsc = 0;
 
+	/*
+	 * static unsigned rte_lcore_id(void)	
+	 *
+	 * Return the ID of the execution unit we are running on.
+	 *
+	 * Returns
+	 * Logical core ID (in EAL thread) or LCORE_ID_ANY (in non-EAL thread)
+	 * */
 	lcore_id = rte_lcore_id();
+
 	qconf = &lcore_queue_conf[lcore_id];
 
 	if (qconf->n_rx_port == 0) {
@@ -263,15 +309,15 @@ l2fwd_main_loop(void)
 	RTE_LOG(INFO, L2FWD, "entering main loop on lcore %u\n", lcore_id);
 
 	for (i = 0; i < qconf->n_rx_port; i++) {
-
 		portid = qconf->rx_port_list[i];
 		RTE_LOG(INFO, L2FWD, " -- lcoreid=%u portid=%u\n", lcore_id,
 			portid);
-
 	}
 
 	while (!force_quit) {
-
+		/*
+		 * 每经过一个时钟周期，tsc寄存器就自动加1， rte_rdtsc()只是获得tsc寄存器的值
+		 * */
 		cur_tsc = rte_rdtsc();
 
 		/*
@@ -279,16 +325,36 @@ l2fwd_main_loop(void)
 		 */
 		diff_tsc = cur_tsc - prev_tsc;
 		if (unlikely(diff_tsc > drain_tsc)) {
-
 			for (i = 0; i < qconf->n_rx_port; i++) {
-
 				portid = l2fwd_dst_ports[qconf->rx_port_list[i]];
 				buffer = tx_buffer[portid];
 
+				/*
+				 * static uint16_t rte_eth_tx_buffer_flush(uint8_t port_id,
+				 * 											uint16_t 	queue_id,
+				 * 											struct rte_eth_dev_tx_buffer * 	buffer 
+				 * 										  )		
+				 *
+				 * Send any packets queued up for transmission on a port and HW queue
+				 *
+				 * This causes an explicit flush of packets previously buffered via the rte_eth_tx_buffer() function. 
+				 * It returns the number of packets successfully sent to the NIC, and calls the error callback for 
+				 * any unsent packets. Unless explicitly set up otherwise, the default callback simply frees the 
+				 * unsent packets back to the owning mempool.
+				 *
+				 * Parameters
+				 * port_id	The port identifier of the Ethernet device.
+				 * queue_id	The index of the transmit queue through which output packets must be sent. The value 
+				 * 			must be in the range [0, nb_tx_queue - 1] previously supplied to rte_eth_dev_configure().
+				 * buffer	Buffer of packets to be transmit.
+				 *
+				 * Returns
+				 * The number of packets successfully sent to the Ethernet device. The error callback is 
+				 * called for any packets which could not be sent.
+				 * */
 				sent = rte_eth_tx_buffer_flush(portid, 0, buffer);
 				if (sent)
 					port_statistics[portid].tx += sent;
-
 			}
 
 			/* if timer is enabled */
@@ -318,6 +384,29 @@ l2fwd_main_loop(void)
 		for (i = 0; i < qconf->n_rx_port; i++) {
 
 			portid = qconf->rx_port_list[i];
+
+			/*
+			 * 
+			 * static uint16_t rte_eth_rx_burst(uint8_t port_id,
+			 * 							uint16_t 	queue_id,
+			 * 							struct rte_mbuf ** 	rx_pkts,
+			 * 							const uint16_t 	nb_pkts 
+			 * 						)	
+			 *
+			 * Retrieve a burst of input packets from a receive queue of an Ethernet device. 
+			 * The retrieved packets are stored in rte_mbuf structures whose pointers are supplied in the rx_pkts array.
+			 *
+			 * The rte_eth_rx_burst() function loops, parsing the RX ring of the receive queue, up to nb_pkts packets, 
+			 * and for each completed RX descriptor in the ring, it performs the following operations:
+			 * 		1.Initialize the rte_mbuf data structure associated with the RX descriptor according to 
+			 * 		  the information provided by the NIC into that RX descriptor.
+			 * 		2.Store the rte_mbuf data structure into the next entry of the rx_pkts array.
+			 * 		3.Replenish the RX descriptor with a new rte_mbuf buffer allocated from the memory pool 
+			 * 		  associated with the receive queue at initialization time.
+			 *
+			 * When retrieving an input packet that was scattered by the controller into multiple receive descriptors, 
+			 * the rte_eth_rx_burst() function appends the associated rte_mbuf buffers to the first buffer of the packet.
+			 * */
 			nb_rx = rte_eth_rx_burst((uint8_t) portid, 0,
 						 pkts_burst, MAX_PKT_BURST);
 
@@ -325,6 +414,28 @@ l2fwd_main_loop(void)
 
 			for (j = 0; j < nb_rx; j++) {
 				m = pkts_burst[j];
+				/*
+				 * static void rte_prefetch0(const volatile void *p)	
+				 *
+				 * Prefetch a cache line into all cache levels.
+				 *
+				 * Parameters
+				 * p	Address to prefetch
+				 *
+				 * */
+
+				/*
+				 * #define rte_pktmbuf_mtod(m,t) rte_pktmbuf_mtod_offset(m, t, 0)
+				 *
+				 * A macro that points to the start of the data in the mbuf.
+				 *
+				 * The returned pointer is cast to type t. Before using this function, the user must ensure that 
+				 * the first segment is large enough to accommodate its data.
+				 *
+				 * Parameters
+				 * m	The packet mbuf.
+				 * t	The type to cast the result into.
+				 * */
 				rte_prefetch0(rte_pktmbuf_mtod(m, void *));
 				l2fwd_simple_forward(m, portid);
 			}
@@ -435,6 +546,15 @@ l2fwd_parse_args(int argc, char **argv)
 			}
 			break;
 
+		/*
+		 * -q 的意思:
+		 *  The application uses one lcore to poll one or several ports, depending on the -q option, 
+		 *  which specifies the number of queues per lcore.
+		 *
+		 *  For example, if the user specifies -q 4, the application is able to poll four ports with 
+		 *  one lcore. If there are 16 ports on the target (and if the portmask argument is -p ffff ), 
+		 *  the application will need four lcores to poll all the ports.
+		 * */
 		/* nqueue */
 		case 'q':
 			l2fwd_rx_queue_per_lcore = l2fwd_parse_nqueue(optarg);
