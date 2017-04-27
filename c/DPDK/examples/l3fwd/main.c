@@ -169,6 +169,9 @@ static struct rte_eth_conf port_conf = {
 	},
 };
 
+/*
+ * struct rte_mempool : The RTE mempool structure.
+ * */
 static struct rte_mempool * pktmbuf_pool[NB_SOCKETS];
 
 struct l3fwd_lkp_mode {
@@ -707,6 +710,17 @@ init_mem(unsigned nb_mbuf)
 		if (rte_lcore_is_enabled(lcore_id) == 0)
 			continue;
 
+		/*
+		 * static unsigned rte_lcore_to_socket_id(unsigned 	lcore_id)	
+		 *
+		 * Get the ID of the physical socket of the specified lcore
+		 *
+		 * Parameters
+		 * lcore_id	the targeted lcore, which MUST be between 0 and RTE_MAX_LCORE-1.
+		 *
+		 * Returns
+		 * the ID of lcoreid's physical socket
+		 * */
 		if (numa_on)
 			socketid = rte_lcore_to_socket_id(lcore_id);
 		else
@@ -718,12 +732,13 @@ init_mem(unsigned nb_mbuf)
 				socketid, lcore_id, NB_SOCKETS);
 		}
 
+		/*
+		 * 根据socketid分配的内存池.
+		 * */
 		if (pktmbuf_pool[socketid] == NULL) {
 			snprintf(s, sizeof(s), "mbuf_pool_%d", socketid);
-			pktmbuf_pool[socketid] =
-				rte_pktmbuf_pool_create(s, nb_mbuf,
-					MEMPOOL_CACHE_SIZE, 0,
-					RTE_MBUF_DEFAULT_BUF_SIZE, socketid);
+			pktmbuf_pool[socketid] = rte_pktmbuf_pool_create(s, nb_mbuf, MEMPOOL_CACHE_SIZE, 0, 
+							RTE_MBUF_DEFAULT_BUF_SIZE, socketid);
 			if (pktmbuf_pool[socketid] == NULL)
 				rte_exit(EXIT_FAILURE,
 					"Cannot init mbuf pool on socket %d\n",
@@ -883,6 +898,11 @@ main(int argc, char **argv)
 	if (check_port_config(nb_ports) < 0)
 		rte_exit(EXIT_FAILURE, "check_port_config failed\n");
 
+	/*
+	 * static unsigned rte_lcore_count(void)	
+	 *
+	 * Return the number of execution units (lcores) on the system.
+	 * */
 	nb_lcores = rte_lcore_count();
 
 	/* Setup function pointers for lookup method. */
@@ -901,11 +921,43 @@ main(int argc, char **argv)
 		fflush(stdout);
 
 		nb_rx_queue = get_port_n_rx_queues(portid);
+
 		n_tx_queue = nb_lcores;
+
 		if (n_tx_queue > MAX_TX_QUEUE_PER_PORT)
 			n_tx_queue = MAX_TX_QUEUE_PER_PORT;
 		printf("Creating queues: nb_rxq=%d nb_txq=%u... ",
 			nb_rx_queue, (unsigned)n_tx_queue );
+
+		/*
+		 * int rte_eth_dev_configure(uint8_t 	port_id,
+		 * 							uint16_t 	nb_rx_queue,
+		 * 							uint16_t 	nb_tx_queue,
+		 * 							const struct rte_eth_conf * 	eth_conf 
+		 * 							)		
+		 *
+		 * Configure an Ethernet device. This function must be invoked first before any other function 
+		 * in the Ethernet API. This function can also be re-invoked when a device is in the stopped state.
+		 *
+		 * Parameters
+		 *
+		 * port_id		The port identifier of the Ethernet device to configure.
+		 * nb_rx_queue	The number of receive queues to set up for the Ethernet device.
+		 * nb_tx_queue	The number of transmit queues to set up for the Ethernet device.
+		 * eth_conf		The pointer to the configuration data to be used for the Ethernet device. 
+		 * 				The rte_eth_conf structure includes:
+		 * 					1.the hardware offload features to activate, with dedicated fields for each 
+		 * 					statically configurable offload hardware feature provided by Ethernet devices, 
+		 * 					such as IP checksum or VLAN tag stripping for example.
+		 * 					2.the Receive Side Scaling (RSS) configuration when using multiple RX queues per port.
+		 * 
+		 * Embedding all configuration information in a single data structure is the more flexible method 
+		 * that allows the addition of new features without changing the syntax of the API.
+		 *
+		 * Returns
+		 * 0: Success, device configured.
+		 * <0: Error code returned by the driver configuration function.
+		 * */
 		ret = rte_eth_dev_configure(portid, nb_rx_queue,
 					(uint16_t)n_tx_queue, &port_conf);
 		if (ret < 0)
@@ -946,10 +998,27 @@ main(int argc, char **argv)
 			printf("txq=%u,%d,%d ", lcore_id, queueid, socketid);
 			fflush(stdout);
 
+			/*
+			 * void rte_eth_dev_info_get(uint8_t	port_id,
+			 * 							 struct rte_eth_dev_info * 	dev_info 
+			 * )		
+			 *
+			 * Retrieve the contextual information of an Ethernet device.
+			 *
+			 * Parameters
+			 *
+			 * port_id	The port identifier of the Ethernet device.
+			 * dev_info	A pointer to a structure of type rte_eth_dev_info to be filled with 
+			 * 			the contextual information of the Ethernet device.
+			 * */
 			rte_eth_dev_info_get(portid, &dev_info);
 			txconf = &dev_info.default_txconf;
 			if (port_conf.rxmode.jumbo_frame)
 				txconf->txq_flags = 0;
+
+			/*
+			 * Allocate and set up a transmit queue for an Ethernet device.
+			 * */
 			ret = rte_eth_tx_queue_setup(portid, queueid, nb_txd,
 						     socketid, txconf);
 			if (ret < 0)
@@ -957,6 +1026,18 @@ main(int argc, char **argv)
 					"rte_eth_tx_queue_setup: err=%d, "
 					"port=%d\n", ret, portid);
 
+			/*
+			 * struct lcore_conf {
+			 * 		uint16_t n_rx_queue;
+			 *      struct lcore_rx_queue rx_queue_list[MAX_RX_QUEUE_PER_LCORE];
+			 *      uint16_t n_tx_port;
+			 *      uint16_t tx_port_id[RTE_MAX_ETHPORTS];
+			 *      uint16_t tx_queue_id[RTE_MAX_ETHPORTS];
+			 *      struct mbuf_table tx_mbufs[RTE_MAX_ETHPORTS];
+			 *      void *ipv4_lookup_struct;
+			 *      void *ipv6_lookup_struct;
+			 *      } __rte_cache_aligned;
+			 * */
 			qconf = &lcore_conf[lcore_id];
 			qconf->tx_queue_id[portid] = queueid;
 			queueid++;

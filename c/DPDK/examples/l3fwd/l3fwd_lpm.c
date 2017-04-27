@@ -228,9 +228,9 @@ setup_lpm(const int socketid)
 	 *
 	 * Parameters
 	 *
-	 * name	LPM object name
+	 * name			LPM object name
 	 * socket_id	NUMA socket ID for LPM table memory allocation
-	 * config	Structure containing the configuration
+	 * config		Structure containing the configuration
 	 *
 	 * Returns
 	 *
@@ -257,6 +257,24 @@ setup_lpm(const int socketid)
 				enabled_port_mask) == 0)
 			continue;
 
+		/*
+		 * int rte_lpm_add(struct rte_lpm *lpm,
+		 * 						uint32_t 	ip,
+		 * 						uint8_t 	depth,
+		 * 						uint32_t 	next_hop 
+		 * 				  )		
+		 *
+		 * Add a rule to the LPM table.
+		 *
+		 * Parameters
+		 * lpm		LPM object handle
+		 * ip		IP of the rule to be added to the LPM table
+		 * depth	Depth of the rule to be added to the LPM table
+		 * next_hop	Next hop of the rule to be added to the LPM table
+		 *
+		 * Returns
+		 * 0 on success, negative value otherwise
+		 * */
 		ret = rte_lpm_add(ipv4_l3fwd_lpm_lookup_struct[socketid],
 			ipv4_l3fwd_lpm_route_array[i].ip,
 			ipv4_l3fwd_lpm_route_array[i].depth,

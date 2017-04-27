@@ -279,8 +279,7 @@ em_get_ipv4_dst_port(void *ipv4_hdr, uint8_t portid, void *lookup_struct)
 {
 	int ret = 0;
 	union ipv4_5tuple_host key;
-	struct rte_hash *ipv4_l3fwd_lookup_struct =
-		(struct rte_hash *)lookup_struct;
+	struct rte_hash *ipv4_l3fwd_lookup_struct = (struct rte_hash *)lookup_struct;
 
 	ipv4_hdr = (uint8_t *)ipv4_hdr + offsetof(struct ipv4_hdr, time_to_live);
 
