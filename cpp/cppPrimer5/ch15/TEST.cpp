@@ -1,8 +1,8 @@
 #include "ex15_03_Quote.h"
 #include "ex15_05_Bulk_quote.h"
+#include "ex15_07_Limit_quote.h"
 
 /*
-#include "ex15_07_Limit_quote.h"
 #include "ex15_11_Quote.h"
 #include "ex15_11_Bulk_quote.h"
 #include "ex15_11_Limit_quote.h"
@@ -17,9 +17,11 @@
 #include "ex15_30_Basket.h"
 */
 
+using namespace std;
+
 int main()
 {
-    cout << "\n===== ex03 =====" << endl;
+	cout << "\n===== ex03 =====" << endl;
 
     EX03::Quote quote_03("0-201-78345-X", 23.8);
     EX03::print_total(cout, quote_03, 3);
@@ -29,12 +31,12 @@ int main()
     EX05::Bulk_quote bulk_quote("0-201-78345-X", 23.8, 3, 0.5);
     EX03::print_total(cout, bulk_quote, 4);
 
-	/*
     cout << "\n===== ex07 =====" << endl;
 
     EX07::Limit_quote limit_quote("0-201-78345-X", 23.8, 3, 5, 0.5);
     EX03::print_total(cout, limit_quote, 6);
 
+	/*
     cout << "\n===== ex11 =====" << endl;
 
     EX11::Quote quote_11("0-201-82470-1", 50);
