@@ -12,6 +12,8 @@
 using namespace boost;
 using namespace std;
 
+// -lboost_thread 
+
 typedef basic_atom<int> atom_int;
 
 //io流是共享资源，需要锁定。
