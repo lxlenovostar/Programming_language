@@ -15,6 +15,7 @@
 #include <iostream>
 
 class Sales_data {
+	friend std::istream &read(std::istream&, Sales_data&);
     friend std::istream& operator>>(std::istream&, Sales_data&);       // input
     friend std::ostream& operator<<(std::ostream&, const Sales_data&); // output
     friend Sales_data operator+(const Sales_data&,
@@ -52,4 +53,7 @@ inline double Sales_data::avg_price() const
     return units_sold ? revenue / units_sold : 0;
 }
 
+// nonmember Sales_data interface functions
+Sales_data add(const Sales_data&, const Sales_data&);
+std::ostream &print(std::ostream&, const Sales_data&);
 #endif

@@ -10,6 +10,14 @@
 
 #include "ex14_02.h"
 
+std::istream &read(std::istream &is, Sales_data &item)
+{
+	double price = 0;
+	is >> item.bookNo >> item.units_sold >> price;
+	item.revenue = price * item.units_sold;
+	return is;
+}
+
 Sales_data::Sales_data(std::istream& is) : Sales_data()
 {
     //is >> *this;
@@ -29,10 +37,10 @@ std::istream& operator>>(std::istream& is, Sales_data& item)
 {
     double price = 0.0;
     is >> item.bookNo >> item.units_sold >> price;
-    if (is)
+    if (is)		//检查输入是否成功
         item.revenue = price * item.units_sold;
     else
-        item = Sales_data();
+        item = Sales_data();	//输入失败：对象被赋予默认的状态。
     return is;
 }
 
