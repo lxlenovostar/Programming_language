@@ -3,7 +3,7 @@
 
 using namespace std;
 
-//g++ main.cpp -o main -g -Wall -Wl,-Bstatic -lglog -Wl,-Bdynamic -lpthread
+// g++ main.cpp -o test -g -Wall -I/usr/local/include/ -Wl,-Bstatic -lglog -Wl,-Bdynamic -lpthread 
 
 int main(int argc, char** argv) 
 {
