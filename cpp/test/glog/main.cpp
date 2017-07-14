@@ -11,7 +11,7 @@ int main(int argc, char** argv)
 	FLAGS_log_dir=".";   
 	google::InitGoogleLogging(argv[0]); 
 
-	google::SetLogDestination(google::GLOG_INFO, "INFO.");
+	google::SetLogDestination(google::GLOG_INFO, "test_file_name_INFO.");
 	google::SetLogDestination(google::GLOG_WARNING, "WARNING.");
 	google::SetLogDestination(google::GLOG_ERROR, "ERROR.");
 	google::SetLogDestination(google::GLOG_FATAL, "FATAL.");
