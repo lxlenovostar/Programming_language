@@ -14,10 +14,16 @@ int main()
 	cout << s1 << s2 << endl;
 	*/
 
+	/*	
 	string word;
 	//while(cin >> word) 
 	while(getline(cin, word)) 
 		cout << word << endl;
+	*/
+
+	string test("hello world");
+	cout << test << endl;
+	cout << test.c_str() << endl;
 
 	return 0;
 
