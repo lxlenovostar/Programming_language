@@ -64,6 +64,20 @@ main(int argc, char *argv[])
         printf("About to epoll_wait()\n");
         ready = epoll_wait(epfd, evlist, MAX_EVENTS, -1);
         if (ready == -1) {
+			/*
+			 * the system call fails with the error EINTR (Interrupted function). 
+			 *
+			 * the SIGCONT signal is used to continue a process previously stopped
+			 * by one of the stop signals (SIGSTOP, SIGTSTP, SIGTTIN, and SIGTTOU). 
+			 * Because of their unique purpose, in certain situations the kernel 
+			 * deals with these signals differently from other signals.
+			 *
+			 * After the epoll_wait() call, the program checks for an EINTR return , 
+			 * which may occur if the program was stopped by a signal in the middle 
+			 * of the epoll_wait() call and then resumed by SIGCONT. (Refer to 
+			 * Section 21.5.) If this occurs, the program restarts the epoll_wait() 
+			 * call.
+			 * */
             if (errno == EINTR)
                 continue;               /* Restart if interrupted by signal */
             else
