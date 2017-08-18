@@ -29,6 +29,7 @@ main(int argc, char *argv[])
     if (argc < 2 || strcmp(argv[1], "--help") == 0)
         usageErr("%s file...\n", argv[0]);
 
+	// Create an epoll instance
     epfd = epoll_create(argc - 1);
     if (epfd == -1)
         errExit("epoll_create");
@@ -37,6 +38,7 @@ main(int argc, char *argv[])
        list" for the epoll instance */
 
     for (j = 1; j < argc; j++) {
+		// Open each of the files named on the command line for input.
         fd = open(argv[j], O_RDONLY);
         if (fd == -1)
             errExit("open");
@@ -44,6 +46,8 @@ main(int argc, char *argv[])
 
         ev.events = EPOLLIN;            /* Only interested in input events */
         ev.data.fd = fd;
+		//  add the resulting file descriptor to the interest list of the 
+		//  epoll instance.
         if (epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ev) == -1)
             errExit("epoll_ctl");
     }
@@ -55,6 +59,8 @@ main(int argc, char *argv[])
         /* Fetch up to MAX_EVENTS items from the ready list of the
            epoll instance */
 
+		// calls epoll_wait() to monitor the interest list of the epoll
+		// instance and handles the returned events from each call. 
         printf("About to epoll_wait()\n");
         ready = epoll_wait(epfd, evlist, MAX_EVENTS, -1);
         if (ready == -1) {
