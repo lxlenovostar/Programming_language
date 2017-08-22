@@ -11,8 +11,6 @@ import (
 
 func main() {
 	for tmp, arg := range os.Args[1:] {
-		fmt.Printf("%v\n", strconv.Itoa(tmp) + " " + arg)
+		fmt.Printf("%v\n", strconv.Itoa(tmp)+" "+arg)
 	}
 }
-
-//!-
