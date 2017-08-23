@@ -25,6 +25,33 @@ server::server(const std::string& address, const std::string& port,
     new_connection_(),
     request_handler_(doc_root)
 {
+  // SIGINT
+  // When the user types the terminal interrupt character (usually Control-C), the
+  // terminal driver sends this signal to the foreground process group. The
+  // default action for this signal is to terminate the process.
+  //
+  // SIGTERM
+  // This is the standard signal used for terminating a process and is the default
+  // signal sent by the kill and killall commands. Users sometimes explicitly
+  // send the SIGKILL signal to a process using kill –KILL or kill –9. However,
+  // this is generally a mistake. A well-designed application will have a handler
+  // for SIGTERM that causes the application to exit gracefully, cleaning up 
+  // temporary files and releasing other resources beforehand. Killing a process
+  // with SIGKILL bypasses the SIGTERM handler. Thus, we should always first
+  // attempt to terminate a process using SIGTERM, and reserve SIGKILL as a last
+  // resort for killing runaway processes that don’t respond to SIGTERM.
+  //
+  // SIGQUIT
+  // When the user types the quit character (usually Control-\) on the keyboard,
+  // this signal is sent to the foreground process group. By default, this signal
+  // terminates a process and causes it to produce a core dump, which can then
+  // be used for debugging. Using SIGQUIT in this manner is useful with a program 
+  // that is stuck in an infinite loop or is otherwise not responding. By
+  // typing Control-\ and then loading the resulting core dump with the gdb
+  // debugger and using the backtrace command to obtain a stack trace, we can
+  // find out which part of the program code was executing. ([Matloff, 2008]
+  // describes the use of gdb.)
+  //
   // Register to handle the signals that indicate when the server should exit.
   // It is safe to register for the same signal multiple times in a program,
   // provided all registration for the specified signal is made through Asio.
