@@ -15,7 +15,10 @@ import (
 )
 
 func main() {
+	// 内置函数make创建空map
 	counts := make(map[string]int)
+	// 程序使用短发量声明创建 bufio.Scanner 类垄癿发量 input。
+	// TODO
 	input := bufio.NewScanner(os.Stdin)
 	for input.Scan() {
 		counts[input.Text()]++
