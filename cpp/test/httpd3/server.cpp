@@ -92,6 +92,9 @@ void server::run()
 
 void server::start_accept()
 {
+  // reset(T* p) 相当于释放当前所控制的对象，然后接管p所指的对象
+  // 为了能够让socket对象能够被异步调用后还能使用，使用 shared_ptr 
+  // 可以在整个生命周期中存在，直到没有人使用它为止。
   new_connection_.reset(new connection(io_service_, request_handler_));
   acceptor_.async_accept(new_connection_->socket(),
       boost::bind(&server::handle_accept, this,
@@ -105,6 +108,7 @@ void server::handle_accept(const boost::system::error_code& e)
     new_connection_->start();
   }
 
+  // 再次启动服务器接受连接
   start_accept();
 }
 
