@@ -19,6 +19,7 @@ import (
 func main() {
 	counts := make(map[string]int)
 	for _, filename := range os.Args[1:] {
+		// data 是一个字节切片
 		data, err := ioutil.ReadFile(filename)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "dup3: %v\n", err)
