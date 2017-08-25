@@ -54,6 +54,7 @@ private:
   /// The signal_set is used to register for process termination notifications.
   boost::asio::signal_set signals_;
 
+  // TCP 通信的必备要素
   /// Acceptor used to listen for incoming connections.
   boost::asio::ip::tcp::acceptor acceptor_;
 

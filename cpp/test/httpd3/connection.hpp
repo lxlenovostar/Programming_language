@@ -24,6 +24,11 @@
 namespace http {
 namespace server3 {
 
+// The header <boost/enable_shared_from_this.hpp> defines the 
+// class template enable_shared_from_this. It is used as a base 
+// class that allows a shared_ptr to the current object to be 
+// obtained from within a member function.
+//
 /// Represents a single connection from a client.
 class connection
   : public boost::enable_shared_from_this<connection>,
@@ -57,6 +62,13 @@ private:
   /// The handler used to process the incoming request.
   request_handler& request_handler_;
 
+  // 库 Boost.Array 在 boost/array.hpp 中定义了一个模板类 boost::array 。 
+  // 通过使用这个类， 你可以创建一个跟 C++ 里传统的数组有着相同属性的容器。 
+  // 而且， boost::array 还满足了 C++ 中容器的一切需求， 因此， 你可以像
+  // 操作容器一样方便的操作这个 array。 基本上， 你可以把 boost::array 
+  // 当成 std::vector 来使用， 只不过 boost::array 是定长的。
+  // 
+  // 一个 boost::array 类型的数组可以使用传统 C++ 数组的初始化方式来初始化。
   /// Buffer for incoming data.
   boost::array<char, 8192> buffer_;
 
