@@ -12,10 +12,16 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strings"
 )
 
 func main() {
 	for _, url := range os.Args[1:] {
+		if !strings.HasPrefix(url, "http://") {
+			url = "http://" + url
+			fmt.Println(url)
+		}
+
 		// http.Get函数是创建HTTP请求的函数
 		resp, err := http.Get(url)
 		if err != nil {

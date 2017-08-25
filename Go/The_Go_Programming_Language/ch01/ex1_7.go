@@ -9,7 +9,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 )
@@ -23,14 +23,14 @@ func main() {
 			os.Exit(1)
 		}
 		// ioutil.ReadAll函数从reponse中读取到全部内容
-		b, err := ioutil.ReadAll(resp.Body)
+		//b, err := ioutil.ReadAll(resp.Body)
+		_, err = io.Copy(os.Stdout, resp.Body)
 		resp.Body.Close()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "fetch: reading %s: %v\n", url, err)
 			// 终止进程
 			os.Exit(1)
 		}
-		fmt.Printf("%s", b)
 	}
 }
 
