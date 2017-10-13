@@ -79,6 +79,11 @@ int main(int argc, char *argv[]) {
   // Register all formats and codecs
   av_register_all();
   
+  /*
+   * reads the file header and stores information about the file 
+   * format in the AVFormatContext structure we have given it. 
+   * This function only looks at the header.
+   * */
   // Open video file
   if(avformat_open_input(&pFormatCtx, argv[1], NULL, NULL)!=0)
     return -1; // Couldn't open file
@@ -87,9 +92,16 @@ int main(int argc, char *argv[]) {
   if(avformat_find_stream_info(pFormatCtx, NULL)<0)
     return -1; // Couldn't find stream information
   
+  /*
+   * a handy debugging function
+   * */
   // Dump information about file onto standard error
   av_dump_format(pFormatCtx, 0, argv[1], 0);
   
+  /*
+   * pFormatCtx->streams is just an array of pointers, 
+   * of size pFormatCtx->nb_streams.
+   * */
   // Find the first video stream
   videoStream=-1;
   for(i=0; i<pFormatCtx->nb_streams; i++)
@@ -102,12 +114,20 @@ int main(int argc, char *argv[]) {
   
   // Get a pointer to the codec context for the video stream
   pCodecCtxOrig=pFormatCtx->streams[videoStream]->codec;
+
+  /*
+   * codec_id : enum AVCodecID 
+   * */
   // Find the decoder for the video stream
   pCodec=avcodec_find_decoder(pCodecCtxOrig->codec_id);
   if(pCodec==NULL) {
     fprintf(stderr, "Unsupported codec!\n");
     return -1; // Codec not found
   }
+
+  /*
+   * TODO : 这边为什么要拷贝，而不是直接用？
+   * */
   // Copy context
   pCodecCtx = avcodec_alloc_context3(pCodec);
   if(avcodec_copy_context(pCodecCtx, pCodecCtxOrig) != 0) {
