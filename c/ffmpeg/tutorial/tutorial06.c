@@ -1,27 +1,25 @@
-// tutorial05.c
+// tutorial06.c
 // A pedagogical video player that really works!
+//
+// This tutorial was written by Stephen Dranger (dranger@gmail.com).
 //
 // Code based on FFplay, Copyright (c) 2003 Fabrice Bellard, 
 // and a tutorial by Martin Bohme (boehme@inb.uni-luebeckREMOVETHIS.de)
 // Tested on Gentoo, CVS version 5/01/07 compiled with GCC 4.1.1
-// With updates from https://github.com/chelyaev/ffmpeg-tutorial
-// Updates tested on:
-// LAVC 54.59.100, LAVF 54.29.104, LSWS 2.1.101, SDL 1.2.15
-// on GCC 4.7.2 in Debian February 2015
-// Use
 //
-// gcc -o tutorial05 tutorial05.c -lavformat -lavcodec -lswscale -lz -lm `sdl-config --cflags --libs`
-// to build (assuming libavformat and libavcodec are correctly installed, 
-// and assuming you have sdl-config. Please refer to SDL docs for your installation.)
+// Use the Makefile to build all the samples.
 //
 // Run using
-// tutorial04 myvideofile.mpg
+// tutorial06 myvideofile.mpg
 //
-// to play the video stream on your screen.
+// to play the video.
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libavformat/avio.h>
 #include <libswscale/swscale.h>
+#include <libavutil/avstring.h>
+#include <libavutil/time.h>
 
 #include <SDL.h>
 #include <SDL_thread.h>
@@ -31,14 +29,7 @@
 #endif
 
 #include <stdio.h>
-#include <assert.h>
 #include <math.h>
-
-// compatibility with newer API
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,28,1)
-#define av_frame_alloc avcodec_alloc_frame
-#define av_frame_free avcodec_free_frame
-#endif
 
 #define SDL_AUDIO_BUFFER_SIZE 1024
 #define MAX_AUDIO_FRAME_SIZE 192000
@@ -52,8 +43,9 @@
 #define SAMPLE_CORRECTION_PERCENT_MAX 10
 #define AUDIO_DIFF_AVG_NB 20
 
-#define FF_REFRESH_EVENT (SDL_USEREVENT)
-#define FF_QUIT_EVENT (SDL_USEREVENT + 1)
+#define FF_ALLOC_EVENT   (SDL_USEREVENT)
+#define FF_REFRESH_EVENT (SDL_USEREVENT + 1)
+#define FF_QUIT_EVENT (SDL_USEREVENT + 2)
 
 #define VIDEO_PICTURE_QUEUE_SIZE 1
 
@@ -86,16 +78,15 @@ typedef struct VideoState {
 
   double          audio_clock;
   AVStream        *audio_st;
-  AVCodecContext  *audio_ctx;
   PacketQueue     audioq;
-  uint8_t         audio_buf[(AVCODEC_MAX_AUDIO_FRAME_SIZE * 3) / 2];
+  AVFrame         audio_frame;
+  uint8_t         audio_buf[(MAX_AUDIO_FRAME_SIZE * 3) / 2];
   unsigned int    audio_buf_size;
   unsigned int    audio_buf_index;
-  AVFrame         audio_frame;
   AVPacket        audio_pkt;
   uint8_t         *audio_pkt_data;
   int             audio_pkt_size;
-  int             audio_hw_buf_size;
+  int             audio_hw_buf_size;  
   double          audio_diff_cum; /* used for AV difference average computation */
   double          audio_diff_avg_coef;
   double          audio_diff_threshold;
@@ -107,9 +98,7 @@ typedef struct VideoState {
   double          video_current_pts; ///<current displayed pts (different from video_clock if frame fifos are used)
   int64_t         video_current_pts_time;  ///<time (av_gettime) at which we updated video_current_pts - used to have running video pts
   AVStream        *video_st;
-  AVCodecContext  *video_ctx;
   PacketQueue     videoq;
-  struct SwsContext *sws_ctx;
 
   VideoPicture    pictq[VIDEO_PICTURE_QUEUE_SIZE];
   int             pictq_size, pictq_rindex, pictq_windex;
@@ -121,6 +110,9 @@ typedef struct VideoState {
 
   char            filename[1024];
   int             quit;
+
+  AVIOContext     *io_context;
+  struct SwsContext *sws_ctx;
 } VideoState;
 
 enum {
@@ -130,7 +122,6 @@ enum {
 };
 
 SDL_Surface     *screen;
-SDL_mutex       *screen_mutex;
 
 /* Since we only have one decoding thread, the Big Struct
    can be global in case we need it. */
@@ -202,17 +193,16 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
   SDL_UnlockMutex(q->mutex);
   return ret;
 }
-
 double get_audio_clock(VideoState *is) {
   double pts;
   int hw_buf_size, bytes_per_sec, n;
-  
+
   pts = is->audio_clock; /* maintained in the audio thread */
   hw_buf_size = is->audio_buf_size - is->audio_buf_index;
   bytes_per_sec = 0;
-  n = is->audio_ctx->channels * 2;
+  n = is->audio_st->codec->channels * 2;
   if(is->audio_st) {
-    bytes_per_sec = is->audio_ctx->sample_rate * n;
+    bytes_per_sec = is->audio_st->codec->sample_rate * n;
   }
   if(bytes_per_sec) {
     pts -= (double)hw_buf_size / bytes_per_sec;
@@ -238,8 +228,6 @@ double get_master_clock(VideoState *is) {
     return get_external_clock(is);
   }
 }
-
-
 /* Add or subtract samples to get a better sync, return new
    audio buffer size */
 int synchronize_audio(VideoState *is, short *samples,
@@ -247,7 +235,7 @@ int synchronize_audio(VideoState *is, short *samples,
   int n;
   double ref_clock;
 
-  n = 2 * is->audio_ctx->channels;
+  n = 2 * is->audio_st->codec->channels;
   
   if(is->av_sync_type != AV_SYNC_AUDIO_MASTER) {
     double diff, avg_diff;
@@ -265,7 +253,7 @@ int synchronize_audio(VideoState *is, short *samples,
       } else {
 	avg_diff = is->audio_diff_cum * (1.0 - is->audio_diff_avg_coef);
 	if(fabs(avg_diff) >= is->audio_diff_threshold) {
-	  wanted_size = samples_size + ((int)(diff * is->audio_ctx->sample_rate) * n);
+	  wanted_size = samples_size + ((int)(diff * is->audio_st->codec->sample_rate) * n);
 	  min_size = samples_size * ((100 - SAMPLE_CORRECTION_PERCENT_MAX) / 100);
 	  max_size = samples_size * ((100 + SAMPLE_CORRECTION_PERCENT_MAX) / 100);
 	  if(wanted_size < min_size) {
@@ -302,31 +290,33 @@ int synchronize_audio(VideoState *is, short *samples,
   return samples_size;
 }
 
-int audio_decode_frame(VideoState *is, uint8_t *audio_buf, int buf_size, double *pts_ptr) {
+int audio_decode_frame(VideoState *is, double *pts_ptr) {
 
-  int len1, data_size = 0;
+  int len1, data_size = 0, n;
   AVPacket *pkt = &is->audio_pkt;
   double pts;
-  int n;
 
   for(;;) {
     while(is->audio_pkt_size > 0) {
       int got_frame = 0;
-      len1 = avcodec_decode_audio4(is->audio_ctx, &is->audio_frame, &got_frame, pkt);
+      len1 = avcodec_decode_audio4(is->audio_st->codec, &is->audio_frame, &got_frame, pkt);
       if(len1 < 0) {
 	/* if error, skip frame */
 	is->audio_pkt_size = 0;
 	break;
       }
-      data_size = 0;
-      if(got_frame) {
-	data_size = av_samples_get_buffer_size(NULL, 
-					       is->audio_ctx->channels,
-					       is->audio_frame.nb_samples,
-					       is->audio_ctx->sample_fmt,
-					       1);
-	assert(data_size <= buf_size);
-	memcpy(audio_buf, is->audio_frame.data[0], data_size);
+      if (got_frame)
+      {
+          data_size = 
+            av_samples_get_buffer_size
+            (
+                NULL, 
+                is->audio_st->codec->channels,
+                is->audio_frame.nb_samples,
+                is->audio_st->codec->sample_fmt,
+                1
+            );
+          memcpy(is->audio_buf, is->audio_frame.data[0], data_size);
       }
       is->audio_pkt_data += len1;
       is->audio_pkt_size -= len1;
@@ -336,9 +326,10 @@ int audio_decode_frame(VideoState *is, uint8_t *audio_buf, int buf_size, double 
       }
       pts = is->audio_clock;
       *pts_ptr = pts;
-      n = 2 * is->audio_ctx->channels;
+      n = 2 * is->audio_st->codec->channels;
       is->audio_clock += (double)data_size /
-	(double)(n * is->audio_ctx->sample_rate);
+	(double)(n * is->audio_st->codec->sample_rate);
+
       /* We have data, return it and come back for more later */
       return data_size;
     }
@@ -370,7 +361,7 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
   while(len > 0) {
     if(is->audio_buf_index >= is->audio_buf_size) {
       /* We have already sent all our data; get more */
-      audio_size = audio_decode_frame(is, is->audio_buf, sizeof(is->audio_buf), &pts);
+      audio_size = audio_decode_frame(is, &pts);
       if(audio_size < 0) {
 	/* If error, output silence */
 	is->audio_buf_size = 1024;
@@ -409,21 +400,22 @@ void video_display(VideoState *is) {
 
   SDL_Rect rect;
   VideoPicture *vp;
+  //AVPicture pict;
   float aspect_ratio;
   int w, h, x, y;
-  int i;
+  //int i;
 
   vp = &is->pictq[is->pictq_rindex];
   if(vp->bmp) {
-    if(is->video_ctx->sample_aspect_ratio.num == 0) {
+    if(is->video_st->codec->sample_aspect_ratio.num == 0) {
       aspect_ratio = 0;
     } else {
-      aspect_ratio = av_q2d(is->video_ctx->sample_aspect_ratio) *
-	is->video_ctx->width / is->video_ctx->height;
+      aspect_ratio = av_q2d(is->video_st->codec->sample_aspect_ratio) *
+	is->video_st->codec->width / is->video_st->codec->height;
     }
     if(aspect_ratio <= 0.0) {
-      aspect_ratio = (float)is->video_ctx->width /
-	(float)is->video_ctx->height;
+      aspect_ratio = (float)is->video_st->codec->width /
+	(float)is->video_st->codec->height;
     }
     h = screen->h;
     w = ((int)rint(h * aspect_ratio)) & -3;
@@ -438,9 +430,7 @@ void video_display(VideoState *is) {
     rect.y = y;
     rect.w = w;
     rect.h = h;
-    SDL_LockMutex(screen_mutex);
     SDL_DisplayYUVOverlay(vp->bmp, &rect);
-    SDL_UnlockMutex(screen_mutex);
   }
 }
 
@@ -455,9 +445,10 @@ void video_refresh_timer(void *userdata) {
       schedule_refresh(is, 1);
     } else {
       vp = &is->pictq[is->pictq_rindex];
-      
+
       is->video_current_pts = vp->pts;
       is->video_current_pts_time = av_gettime();
+
       delay = vp->pts - is->frame_last_pts; /* the pts from last time */
       if(delay <= 0 || delay >= 1.0) {
 	/* if incorrect delay, use previous one */
@@ -466,8 +457,6 @@ void video_refresh_timer(void *userdata) {
       /* save for next time */
       is->frame_last_delay = delay;
       is->frame_last_pts = vp->pts;
-
-
 
       /* update delay to sync to audio if not master source */
       if(is->av_sync_type != AV_SYNC_VIDEO_MASTER) {
@@ -485,6 +474,7 @@ void video_refresh_timer(void *userdata) {
 	  }
 	}
       }
+
       is->frame_timer += delay;
       /* computer the REAL delay */
       actual_delay = is->frame_timer - (av_gettime() / 1000000.0);
@@ -493,7 +483,7 @@ void video_refresh_timer(void *userdata) {
 	actual_delay = 0.010;
       }
       schedule_refresh(is, (int)(actual_delay * 1000 + 0.5));
-      
+
       /* show the picture! */
       video_display(is);
       
@@ -522,23 +512,23 @@ void alloc_picture(void *userdata) {
     SDL_FreeYUVOverlay(vp->bmp);
   }
   // Allocate a place to put our YUV image on that screen
-  SDL_LockMutex(screen_mutex);
-  vp->bmp = SDL_CreateYUVOverlay(is->video_ctx->width,
-				 is->video_ctx->height,
+  vp->bmp = SDL_CreateYUVOverlay(is->video_st->codec->width,
+				 is->video_st->codec->height,
 				 SDL_YV12_OVERLAY,
 				 screen);
-  SDL_UnlockMutex(screen_mutex);
-
-  vp->width = is->video_ctx->width;
-  vp->height = is->video_ctx->height;
+  vp->width = is->video_st->codec->width;
+  vp->height = is->video_st->codec->height;
+  
+  SDL_LockMutex(is->pictq_mutex);
   vp->allocated = 1;
+  SDL_CondSignal(is->pictq_cond);
+  SDL_UnlockMutex(is->pictq_mutex);
 
 }
 
 int queue_picture(VideoState *is, AVFrame *pFrame, double pts) {
 
   VideoPicture *vp;
-  int dst_pix_fmt;
   AVPicture pict;
 
   /* wait until we have space for a new pic */
@@ -557,25 +547,35 @@ int queue_picture(VideoState *is, AVFrame *pFrame, double pts) {
 
   /* allocate or resize the buffer! */
   if(!vp->bmp ||
-     vp->width != is->video_ctx->width ||
-     vp->height != is->video_ctx->height) {
+     vp->width != is->video_st->codec->width ||
+     vp->height != is->video_st->codec->height) {
     SDL_Event event;
 
     vp->allocated = 0;
-    alloc_picture(is);
+    /* we have to do it in the main thread */
+    event.type = FF_ALLOC_EVENT;
+    event.user.data1 = is;
+    SDL_PushEvent(&event);
+
+    /* wait until we have a picture allocated */
+    SDL_LockMutex(is->pictq_mutex);
+    while(!vp->allocated && !is->quit) {
+      SDL_CondWait(is->pictq_cond, is->pictq_mutex);
+    }
+    SDL_UnlockMutex(is->pictq_mutex);
     if(is->quit) {
       return -1;
     }
   }
-
   /* We have a place to put our picture on the queue */
+  /* If we are skipping a frame, do we set this to null 
+     but still return vp->allocated = 1? */
+
 
   if(vp->bmp) {
 
     SDL_LockYUVOverlay(vp->bmp);
-    vp->pts = pts;
     
-    dst_pix_fmt = PIX_FMT_YUV420P;
     /* point pict at the queue */
 
     pict.data[0] = vp->bmp->pixels[0];
@@ -587,11 +587,20 @@ int queue_picture(VideoState *is, AVFrame *pFrame, double pts) {
     pict.linesize[2] = vp->bmp->pitches[1];
     
     // Convert the image into YUV format that SDL uses
-    sws_scale(is->sws_ctx, (uint8_t const * const *)pFrame->data,
-	      pFrame->linesize, 0, is->video_ctx->height,
-	      pict.data, pict.linesize);
+    sws_scale
+    (
+        is->sws_ctx,
+        (uint8_t const * const *)pFrame->data,
+        pFrame->linesize,
+        0, 
+        is->video_st->codec->height, 
+        pict.data, 
+        pict.linesize
+    );
     
     SDL_UnlockYUVOverlay(vp->bmp);
+    vp->pts = pts;
+
     /* now we inform our display thread that we have a pic ready */
     if(++is->pictq_windex == VIDEO_PICTURE_QUEUE_SIZE) {
       is->pictq_windex = 0;
@@ -615,11 +624,29 @@ double synchronize_video(VideoState *is, AVFrame *src_frame, double pts) {
     pts = is->video_clock;
   }
   /* update the video clock */
-  frame_delay = av_q2d(is->video_ctx->time_base);
+  frame_delay = av_q2d(is->video_st->codec->time_base);
   /* if we are repeating a frame, adjust clock accordingly */
   frame_delay += src_frame->repeat_pict * (frame_delay * 0.5);
   is->video_clock += frame_delay;
   return pts;
+}
+
+uint64_t global_video_pkt_pts = AV_NOPTS_VALUE;
+
+/* These are called whenever we allocate a frame
+ * buffer. We use this to store the global_pts in
+ * a frame at the time it is allocated.
+ */
+int our_get_buffer(struct AVCodecContext *c, AVFrame *pic) {
+  int ret = avcodec_default_get_buffer(c, pic);
+  uint64_t *pts = av_malloc(sizeof(uint64_t));
+  *pts = global_video_pkt_pts;
+  pic->opaque = pts;
+  return ret;
+}
+void our_release_buffer(struct AVCodecContext *c, AVFrame *pic) {
+  if(pic) av_freep(&pic->opaque);
+  avcodec_default_release_buffer(c, pic);
 }
 
 int video_thread(void *arg) {
@@ -636,16 +663,18 @@ int video_thread(void *arg) {
       // means we quit getting packets
       break;
     }
-    if(packet_queue_get(&is->videoq, packet, 1) < 0) {
-      // means we quit getting packets
-      break;
-    }
     pts = 0;
 
+    // Save global pts to be stored in pFrame in first call
+    global_video_pkt_pts = packet->pts;
     // Decode video frame
-    avcodec_decode_video2(is->video_ctx, pFrame, &frameFinished, packet);
-
-    if((pts = av_frame_get_best_effort_timestamp(pFrame)) == AV_NOPTS_VALUE) {
+    avcodec_decode_video2(is->video_st->codec, pFrame, &frameFinished, 
+				packet);
+    if(packet->dts == AV_NOPTS_VALUE 
+       && pFrame->opaque && *(uint64_t*)pFrame->opaque != AV_NOPTS_VALUE) {
+      pts = *(uint64_t *)pFrame->opaque;
+    } else if(packet->dts != AV_NOPTS_VALUE) {
+      pts = packet->dts;
     } else {
       pts = 0;
     }
@@ -660,7 +689,7 @@ int video_thread(void *arg) {
     }
     av_free_packet(packet);
   }
-  av_frame_free(&pFrame);
+  av_free(pFrame);
   return 0;
 }
 
@@ -669,24 +698,15 @@ int stream_component_open(VideoState *is, int stream_index) {
   AVFormatContext *pFormatCtx = is->pFormatCtx;
   AVCodecContext *codecCtx = NULL;
   AVCodec *codec = NULL;
+  AVDictionary *optionsDict = NULL;
   SDL_AudioSpec wanted_spec, spec;
 
   if(stream_index < 0 || stream_index >= pFormatCtx->nb_streams) {
     return -1;
   }
 
-  codec = avcodec_find_decoder(pFormatCtx->streams[stream_index]->codec->codec_id);
-  if(!codec) {
-    fprintf(stderr, "Unsupported codec!\n");
-    return -1;
-  }
-
-  codecCtx = avcodec_alloc_context3(codec);
-  if(avcodec_copy_context(codecCtx, pFormatCtx->streams[stream_index]->codec) != 0) {
-    fprintf(stderr, "Couldn't copy codec context");
-    return -1; // Error copying codec context
-  }
-
+  // Get a pointer to the codec context for the video stream
+  codecCtx = pFormatCtx->streams[stream_index]->codec;
 
   if(codecCtx->codec_type == AVMEDIA_TYPE_AUDIO) {
     // Set audio settings from codec info
@@ -704,7 +724,8 @@ int stream_component_open(VideoState *is, int stream_index) {
     }
     is->audio_hw_buf_size = spec.size;
   }
-  if(avcodec_open2(codecCtx, codec, NULL) < 0) {
+  codec = avcodec_find_decoder(codecCtx->codec_id);
+  if(!codec || (avcodec_open2(codecCtx, codec, &optionsDict) < 0)) {
     fprintf(stderr, "Unsupported codec!\n");
     return -1;
   }
@@ -713,9 +734,15 @@ int stream_component_open(VideoState *is, int stream_index) {
   case AVMEDIA_TYPE_AUDIO:
     is->audioStream = stream_index;
     is->audio_st = pFormatCtx->streams[stream_index];
-    is->audio_ctx = codecCtx;
     is->audio_buf_size = 0;
     is->audio_buf_index = 0;
+    
+    /* averaging filter for audio sync */
+    is->audio_diff_avg_coef = exp(log(0.01 / AUDIO_DIFF_AVG_NB));
+    is->audio_diff_avg_count = 0;
+    /* Correct audio only if larger error than this */
+    is->audio_diff_threshold = 2.0 * SDL_AUDIO_BUFFER_SIZE / codecCtx->sample_rate;
+
     memset(&is->audio_pkt, 0, sizeof(is->audio_pkt));
     packet_queue_init(&is->audioq);
     SDL_PauseAudio(0);
@@ -723,7 +750,6 @@ int stream_component_open(VideoState *is, int stream_index) {
   case AVMEDIA_TYPE_VIDEO:
     is->videoStream = stream_index;
     is->video_st = pFormatCtx->streams[stream_index];
-    is->video_ctx = codecCtx;
 
     is->frame_timer = (double)av_gettime() / 1000000.0;
     is->frame_last_delay = 40e-3;
@@ -731,22 +757,42 @@ int stream_component_open(VideoState *is, int stream_index) {
 
     packet_queue_init(&is->videoq);
     is->video_tid = SDL_CreateThread(video_thread, is);
-    is->sws_ctx = sws_getContext(is->video_ctx->width, is->video_ctx->height,
-				 is->video_ctx->pix_fmt, is->video_ctx->width,
-				 is->video_ctx->height, PIX_FMT_YUV420P,
-				 SWS_BILINEAR, NULL, NULL, NULL
-				 );
+    is->sws_ctx =
+        sws_getContext
+        (
+            is->video_st->codec->width,
+            is->video_st->codec->height,
+            is->video_st->codec->pix_fmt,
+            is->video_st->codec->width,
+            is->video_st->codec->height,
+            PIX_FMT_YUV420P, 
+            SWS_BILINEAR, 
+            NULL, 
+            NULL, 
+            NULL
+        );
+    codecCtx->get_buffer2 = our_get_buffer;
+    codecCtx->release_buffer = our_release_buffer;
     break;
   default:
     break;
   }
+
+  return 0;
+}
+
+int decode_interrupt_cb(void *opaque) {
+  return (global_video_state && global_video_state->quit);
 }
 
 int decode_thread(void *arg) {
 
   VideoState *is = (VideoState *)arg;
-  AVFormatContext *pFormatCtx;
+  AVFormatContext *pFormatCtx = NULL;
   AVPacket pkt1, *packet = &pkt1;
+
+  AVDictionary *io_dict = NULL;
+  AVIOInterruptCB callback;
 
   int video_index = -1;
   int audio_index = -1;
@@ -756,6 +802,14 @@ int decode_thread(void *arg) {
   is->audioStream=-1;
 
   global_video_state = is;
+  // will interrupt blocking functions if we quit!
+  callback.callback = decode_interrupt_cb;
+  callback.opaque = is;
+  if (avio_open2(&is->io_context, is->filename, 0, &callback, &io_dict))
+  {
+    fprintf(stderr, "Unable to open I/O for %s\n", is->filename);
+    return -1;
+  }
 
   // Open video file
   if(avformat_open_input(&pFormatCtx, is->filename, NULL, NULL)!=0)
@@ -829,7 +883,7 @@ int decode_thread(void *arg) {
   }
 
  fail:
-  if(1){
+  {
     SDL_Event event;
     event.type = FF_QUIT_EVENT;
     event.user.data1 = is;
@@ -869,9 +923,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  screen_mutex = SDL_CreateMutex();
-
-  av_strlcpy(is->filename, argv[1], sizeof(is->filename));
+  av_strlcpy(is->filename, argv[1], 1024);
 
   is->pictq_mutex = SDL_CreateMutex();
   is->pictq_cond = SDL_CreateCond();
@@ -891,8 +943,18 @@ int main(int argc, char *argv[]) {
     case FF_QUIT_EVENT:
     case SDL_QUIT:
       is->quit = 1;
+      /*
+       * If the video has finished playing, then both the picture and
+       * audio queues are waiting for more data.  Make them stop
+       * waiting and terminate normally.
+       */
+      SDL_CondSignal(is->audioq.cond);
+      SDL_CondSignal(is->videoq.cond);
       SDL_Quit();
-      return 0;
+      exit(0);
+      break;
+    case FF_ALLOC_EVENT:
+      alloc_picture(event.user.data1);
       break;
     case FF_REFRESH_EVENT:
       video_refresh_timer(event.user.data1);
@@ -904,4 +966,3 @@ int main(int argc, char *argv[]) {
   return 0;
 
 }
-

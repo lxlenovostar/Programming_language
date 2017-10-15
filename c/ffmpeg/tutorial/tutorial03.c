@@ -2,24 +2,19 @@
 // A pedagogical video player that will stream through every video frame as fast as it can
 // and play audio (out of sync).
 //
+// This tutorial was written by Stephen Dranger (dranger@gmail.com).
+//
 // Code based on FFplay, Copyright (c) 2003 Fabrice Bellard, 
 // and a tutorial by Martin Bohme (boehme@inb.uni-luebeckREMOVETHIS.de)
 // Tested on Gentoo, CVS version 5/01/07 compiled with GCC 4.1.1
-// With updates from https://github.com/chelyaev/ffmpeg-tutorial
-// Updates tested on:
-// LAVC 54.59.100, LAVF 54.29.104, LSWS 2.1.101, SDL 1.2.15
-// on GCC 4.7.2 in Debian February 2015
 //
-// Use
-//
-// gcc -o tutorial03 tutorial03.c -lavformat -lavcodec -lswscale -lz -lm `sdl-config --cflags --libs`
-// to build (assuming libavformat and libavcodec are correctly installed, 
-// and assuming you have sdl-config. Please refer to SDL docs for your installation.)
+// Use the Makefile to build all examples.
 //
 // Run using
 // tutorial03 myvideofile.mpg
 //
 // to play the stream on your screen.
+
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -33,13 +28,6 @@
 #endif
 
 #include <stdio.h>
-#include <assert.h>
-
-// compatibility with newer API
-#if LIBAVCODEC_VERSION_INT < AV_VERSION_INT(55,28,1)
-#define av_frame_alloc avcodec_alloc_frame
-#define av_frame_free avcodec_free_frame
-#endif
 
 #define SDL_AUDIO_BUFFER_SIZE 1024
 #define MAX_AUDIO_FRAME_SIZE 192000
@@ -144,15 +132,18 @@ int audio_decode_frame(AVCodecContext *aCodecCtx, uint8_t *audio_buf, int buf_si
       }
       audio_pkt_data += len1;
       audio_pkt_size -= len1;
-      data_size = 0;
-      if(got_frame) {
-	data_size = av_samples_get_buffer_size(NULL, 
-					       aCodecCtx->channels,
-					       frame.nb_samples,
-					       aCodecCtx->sample_fmt,
-					       1);
-	assert(data_size <= buf_size);
-	memcpy(audio_buf, frame.data[0], data_size);
+      if (got_frame)
+      {
+          data_size = 
+            av_samples_get_buffer_size
+            (
+                NULL, 
+                aCodecCtx->channels,
+                frame.nb_samples,
+                aCodecCtx->sample_fmt,
+                1
+            );
+          memcpy(audio_buf, frame.data[0], data_size);
       }
       if(data_size <= 0) {
 	/* No data yet, get more frames */
@@ -188,7 +179,7 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
   while(len > 0) {
     if(audio_buf_index >= audio_buf_size) {
       /* We have already sent all our data; get more */
-      audio_size = audio_decode_frame(aCodecCtx, audio_buf, sizeof(audio_buf));
+      audio_size = audio_decode_frame(aCodecCtx, audio_buf, audio_buf_size);
       if(audio_size < 0) {
 	/* If error, output silence */
 	audio_buf_size = 1024; // arbitrary?
@@ -211,23 +202,25 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
 int main(int argc, char *argv[]) {
   AVFormatContext *pFormatCtx = NULL;
   int             i, videoStream, audioStream;
-  AVCodecContext  *pCodecCtxOrig = NULL;
   AVCodecContext  *pCodecCtx = NULL;
   AVCodec         *pCodec = NULL;
-  AVFrame         *pFrame = NULL;
+  AVFrame         *pFrame = NULL; 
   AVPacket        packet;
   int             frameFinished;
-  struct SwsContext *sws_ctx = NULL;
+  //float           aspect_ratio;
   
-  AVCodecContext  *aCodecCtxOrig = NULL;
   AVCodecContext  *aCodecCtx = NULL;
   AVCodec         *aCodec = NULL;
 
-  SDL_Overlay     *bmp;
-  SDL_Surface     *screen;
+  SDL_Overlay     *bmp = NULL;
+  SDL_Surface     *screen = NULL;
   SDL_Rect        rect;
   SDL_Event       event;
   SDL_AudioSpec   wanted_spec, spec;
+
+  struct SwsContext   *sws_ctx            = NULL;
+  AVDictionary        *videoOptionsDict   = NULL;
+  AVDictionary        *audioOptionsDict   = NULL;
 
   if(argc < 2) {
     fprintf(stderr, "Usage: test <file>\n");
@@ -251,7 +244,7 @@ int main(int argc, char *argv[]) {
   
   // Dump information about file onto standard error
   av_dump_format(pFormatCtx, 0, argv[1], 0);
-    
+  
   // Find the first video stream
   videoStream=-1;
   audioStream=-1;
@@ -270,20 +263,7 @@ int main(int argc, char *argv[]) {
   if(audioStream==-1)
     return -1;
    
-  aCodecCtxOrig=pFormatCtx->streams[audioStream]->codec;
-  aCodec = avcodec_find_decoder(aCodecCtxOrig->codec_id);
-  if(!aCodec) {
-    fprintf(stderr, "Unsupported codec!\n");
-    return -1;
-  }
-
-  // Copy context
-  aCodecCtx = avcodec_alloc_context3(aCodec);
-  if(avcodec_copy_context(aCodecCtx, aCodecCtxOrig) != 0) {
-    fprintf(stderr, "Couldn't copy codec context");
-    return -1; // Error copying codec context
-  }
-
+  aCodecCtx=pFormatCtx->streams[audioStream]->codec;
   // Set audio settings from codec info
   wanted_spec.freq = aCodecCtx->sample_rate;
   wanted_spec.format = AUDIO_S16SYS;
@@ -297,32 +277,28 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "SDL_OpenAudio: %s\n", SDL_GetError());
     return -1;
   }
-
-  avcodec_open2(aCodecCtx, aCodec, NULL);
+  aCodec = avcodec_find_decoder(aCodecCtx->codec_id);
+  if(!aCodec) {
+    fprintf(stderr, "Unsupported codec!\n");
+    return -1;
+  }
+  avcodec_open2(aCodecCtx, aCodec, &audioOptionsDict);
 
   // audio_st = pFormatCtx->streams[index]
   packet_queue_init(&audioq);
   SDL_PauseAudio(0);
 
   // Get a pointer to the codec context for the video stream
-  pCodecCtxOrig=pFormatCtx->streams[videoStream]->codec;
+  pCodecCtx=pFormatCtx->streams[videoStream]->codec;
   
   // Find the decoder for the video stream
-  pCodec=avcodec_find_decoder(pCodecCtxOrig->codec_id);
+  pCodec=avcodec_find_decoder(pCodecCtx->codec_id);
   if(pCodec==NULL) {
     fprintf(stderr, "Unsupported codec!\n");
     return -1; // Codec not found
   }
-
-  // Copy context
-  pCodecCtx = avcodec_alloc_context3(pCodec);
-  if(avcodec_copy_context(pCodecCtx, pCodecCtxOrig) != 0) {
-    fprintf(stderr, "Couldn't copy codec context");
-    return -1; // Error copying codec context
-  }
-
   // Open codec
-  if(avcodec_open2(pCodecCtx, pCodec, NULL)<0)
+  if(avcodec_open2(pCodecCtx, pCodec, &videoOptionsDict)<0)
     return -1; // Could not open codec
   
   // Allocate video frame
@@ -345,19 +321,21 @@ int main(int argc, char *argv[]) {
 				 pCodecCtx->height,
 				 SDL_YV12_OVERLAY,
 				 screen);
+  sws_ctx =
+    sws_getContext
+    (
+        pCodecCtx->width,
+        pCodecCtx->height,
+        pCodecCtx->pix_fmt,
+        pCodecCtx->width,
+        pCodecCtx->height,
+        PIX_FMT_YUV420P,
+        SWS_BILINEAR,
+        NULL,
+        NULL,
+        NULL
+    );
 
-  // initialize SWS context for software scaling
-  sws_ctx = sws_getContext(pCodecCtx->width,
-			   pCodecCtx->height,
-			   pCodecCtx->pix_fmt,
-			   pCodecCtx->width,
-			   pCodecCtx->height,
-			   PIX_FMT_YUV420P,
-			   SWS_BILINEAR,
-			   NULL,
-			   NULL,
-			   NULL
-			   );
 
   // Read frames and save first five frames to disk
   i=0;
@@ -365,7 +343,8 @@ int main(int argc, char *argv[]) {
     // Is this a packet from the video stream?
     if(packet.stream_index==videoStream) {
       // Decode video frame
-      avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, &packet);
+      avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, 
+			   &packet);
       
       // Did we get a video frame?
       if(frameFinished) {
@@ -380,10 +359,17 @@ int main(int argc, char *argv[]) {
 	pict.linesize[1] = bmp->pitches[2];
 	pict.linesize[2] = bmp->pitches[1];
 
-	// Convert the image into YUV format that SDL uses	
-	sws_scale(sws_ctx, (uint8_t const * const *)pFrame->data,
-		  pFrame->linesize, 0, pCodecCtx->height,
-		  pict.data, pict.linesize);
+	// Convert the image into YUV format that SDL uses
+    sws_scale
+    (
+        sws_ctx, 
+        (uint8_t const * const *)pFrame->data, 
+        pFrame->linesize, 
+        0,
+        pCodecCtx->height,
+        pict.data,
+        pict.linesize
+    );
 	
 	SDL_UnlockYUVOverlay(bmp);
 	
@@ -414,13 +400,10 @@ int main(int argc, char *argv[]) {
   }
 
   // Free the YUV frame
-  av_frame_free(&pFrame);
+  av_free(pFrame);
   
-  // Close the codecs
-  avcodec_close(pCodecCtxOrig);
+  // Close the codec
   avcodec_close(pCodecCtx);
-  avcodec_close(aCodecCtxOrig);
-  avcodec_close(aCodecCtx);
   
   // Close the video file
   avformat_close_input(&pFormatCtx);
