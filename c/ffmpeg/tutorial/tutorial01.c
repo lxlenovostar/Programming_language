@@ -90,7 +90,9 @@ int main(int argc, char *argv[]) {
   if(videoStream==-1)
     return -1; // Didn't find a video stream
   
-  // Get a pointer to the codec context for the video stream
+  // Get a pointer to the codec context for the video stream.
+  // codec context contains all the information about the codec 
+  // that the stream is using
   pCodecCtx=pFormatCtx->streams[videoStream]->codec;
   
   // Find the decoder for the video stream
@@ -99,7 +101,23 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Unsupported codec!\n");
     return -1; // Codec not found
   }
+
   // Open codec
+  // int avcodec_open2	(	AVCodecContext * 	avctx,
+  // const AVCodec * 	codec,
+  // AVDictionary ** 	options 
+  // )	
+  //
+  //
+  // avctx	The context to initialize.
+  // codec	The codec to open this context for. If a non-NULL codec has 
+  //        been previously passed to avcodec_alloc_context3() or 
+  //        avcodec_get_context_defaults3() for this context, then 
+  //        this parameter MUST be either NULL or equal to the previously 
+  //        passed codec.
+  // options	A dictionary filled with AVCodecContext and codec-private 
+  // 			options. On return this object will be filled with options 
+  // 			that were not found.
   if(avcodec_open2(pCodecCtx, pCodec, &optionsDict)<0)
     return -1; // Could not open codec
   
