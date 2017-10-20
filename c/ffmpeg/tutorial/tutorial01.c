@@ -129,6 +129,10 @@ int main(int argc, char *argv[]) {
   if(pFrameRGB==NULL)
     return -1;
   
+  /*
+   * 即使我们申请了一帧的内存，当转换的时候，我们仍然需要一个
+   * 地方来放置原始的数据。
+   * */
   // Determine required buffer size and allocate buffer
   numBytes=avpicture_get_size(PIX_FMT_RGB24, pCodecCtx->width,
 			      pCodecCtx->height);
@@ -149,17 +153,26 @@ int main(int argc, char *argv[]) {
         NULL
     );
   
+  /*
+   * avpicture_fill 把帧和我们新申请的内存来结合。
+   * */
   // Assign appropriate parts of buffer to image planes in pFrameRGB
   // Note that pFrameRGB is an AVFrame, but AVFrame is a superset
   // of AVPicture
   avpicture_fill((AVPicture *)pFrameRGB, buffer, PIX_FMT_RGB24,
 		 pCodecCtx->width, pCodecCtx->height);
   
+  /*
+   * av_read_frame()读取一个包并且把它保存到AVPacket结构体中。
+   * */
   // Read frames and save first five frames to disk
   i=0;
   while(av_read_frame(pFormatCtx, &packet)>=0) {
     // Is this a packet from the video stream?
     if(packet.stream_index==videoStream) {
+	  /*
+	   * avcodec_decode_video2()把包转换为帧。 
+	   * */
       // Decode video frame
       avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, 
 			   &packet);
