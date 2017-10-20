@@ -179,7 +179,7 @@ int main(int argc, char *argv[]) {
       
       // Did we get a video frame?
       if(frameFinished) {
-	// Convert the image from its native format to RGB
+		// Convert the image from its native format to RGB
         sws_scale
         (
             sws_ctx,
