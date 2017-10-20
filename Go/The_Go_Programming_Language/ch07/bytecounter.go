@@ -24,7 +24,8 @@ func (c *ByteCounter) Write(p []byte) (int, error) {
 func main() {
 	//!+main
 	var c ByteCounter
-	c.Write([]byte("hello"))
+	c_len, err := c.Write([]byte("hello"))
+	fmt.Println(c_len, err)
 	fmt.Println(c) // "5", = len("hello")
 
 	c = 0 // reset the counter
