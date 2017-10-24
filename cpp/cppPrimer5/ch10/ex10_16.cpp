@@ -11,8 +11,6 @@
 #include <vector>
 #include <algorithm>
 
-//TODO 参考 http://www.cplusplus.com/reference/algorithm/unique/
-
 
 //! from ex 10.9
 void elimdups(std::vector<std::string>& vs)
@@ -20,14 +18,8 @@ void elimdups(std::vector<std::string>& vs)
     using std::string;
     std::sort(vs.begin(), vs.end());
 
-    std::for_each(vs.begin(), vs.end(), [](const string& s) { std::cout << s << " "; });
-	std::cout << "\n"; 
-
     auto new_end = std::unique(vs.begin(), vs.end());
     vs.erase(new_end, vs.end());
-    
-	std::for_each(vs.begin(), vs.end(), [](const string& s) { std::cout << s << " "; });
-	std::cout << "\n"; 
 }
 
 void biggies(std::vector<std::string>& vs, std::size_t sz)
