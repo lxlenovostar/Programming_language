@@ -70,10 +70,12 @@ int main(int argc, char *argv[]) {
   av_register_all();
   
   // Open video file
+  // 只是读取文件的头部并且把信息保存到AVFormatContext
   if(avformat_open_input(&pFormatCtx, argv[1], NULL, NULL)!=0)
     return -1; // Couldn't open file
   
   // Retrieve stream information
+  // 这个函数为pFormatCtx->streams填充上正确的信息
   if(avformat_find_stream_info(pFormatCtx, NULL)<0)
     return -1; // Couldn't find stream information
   
@@ -93,6 +95,7 @@ int main(int argc, char *argv[]) {
   // Get a pointer to the codec context for the video stream.
   // codec context contains all the information about the codec 
   // that the stream is using
+  // 获得编解码器的指针
   pCodecCtx=pFormatCtx->streams[videoStream]->codec;
   
   // Find the decoder for the video stream
@@ -122,9 +125,11 @@ int main(int argc, char *argv[]) {
     return -1; // Could not open codec
   
   // Allocate video frame
+  // 用于保存帧 
   pFrame=av_frame_alloc();
   
   // Allocate an AVFrame structure
+  // 为原始的帧转换成PPM文件来申请一帧的文件
   pFrameRGB=av_frame_alloc();
   if(pFrameRGB==NULL)
     return -1;
