@@ -20,6 +20,5 @@ int main()
 		cout << p->first << "-" << p->second << ",";
 	cout << endl;
 
-	um.erase(11);
 	cout << um.size() << endl;
 }
