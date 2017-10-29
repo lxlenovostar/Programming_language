@@ -67,10 +67,17 @@ int main(int argc, char *argv[]) {
     return -1;
   }
   // Register all formats and codecs
+  //
+  // Initialize libavformat and register all the muxers, 
+  // demuxers and protocols.
   av_register_all();
   
   // Open video file
   // 只是读取文件的头部并且把信息保存到AVFormatContext
+  //
+  // Open an input stream and read the header.
+  // The codecs are not opened. The stream must be closed with 
+  // avformat_close_input().
   if(avformat_open_input(&pFormatCtx, argv[1], NULL, NULL)!=0)
     return -1; // Couldn't open file
   
@@ -99,28 +106,19 @@ int main(int argc, char *argv[]) {
   pCodecCtx=pFormatCtx->streams[videoStream]->codec;
   
   // Find the decoder for the video stream
+  //
+  // Find a registered decoder with a matching codec ID.
   pCodec=avcodec_find_decoder(pCodecCtx->codec_id);
   if(pCodec==NULL) {
     fprintf(stderr, "Unsupported codec!\n");
     return -1; // Codec not found
   }
 
-  // Open codec
-  // int avcodec_open2	(	AVCodecContext * 	avctx,
-  // const AVCodec * 	codec,
-  // AVDictionary ** 	options 
-  // )	
+  // int avcodec_open2(AVCodecContext *avctx, const AVCodec *codec, AVDictionary **options)	
   //
-  //
-  // avctx	The context to initialize.
-  // codec	The codec to open this context for. If a non-NULL codec has 
-  //        been previously passed to avcodec_alloc_context3() or 
-  //        avcodec_get_context_defaults3() for this context, then 
-  //        this parameter MUST be either NULL or equal to the previously 
-  //        passed codec.
-  // options	A dictionary filled with AVCodecContext and codec-private 
-  // 			options. On return this object will be filled with options 
-  // 			that were not found.
+  // Initialize the AVCodecContext to use the given AVCodec.
+  // Always call this function before using decoding routines 
+  // (such as avcodec_decode_video2()).
   if(avcodec_open2(pCodecCtx, pCodec, &optionsDict)<0)
     return -1; // Could not open codec
   
@@ -167,6 +165,29 @@ int main(int argc, char *argv[]) {
   avpicture_fill((AVPicture *)pFrameRGB, buffer, PIX_FMT_RGB24,
 		 pCodecCtx->width, pCodecCtx->height);
   
+  // int av_read_frame(AVFormatContext *s, AVPacket *pkt)	
+  // Return the next frame of a stream.
+  //
+  // This function returns what is stored in the file, and does not 
+  // validate that what is there are valid frames for the decoder. It 
+  // will split what is stored in the file into frames and return one 
+  // for each call. It will not omit invalid data between valid frames 
+  // so as to give the decoder the maximum information possible for 
+  // decoding.
+  //
+  // If pkt->buf is NULL, then the packet is valid until the next 
+  // av_read_frame() or until avformat_close_input(). Otherwise the 
+  // packet is valid indefinitely. In both cases the packet must be 
+  // freed with av_packet_unref when it is no longer needed. For video, 
+  // the packet contains exactly one frame. For audio, it contains an 
+  // integer number of frames if each frame has a known fixed size 
+  // (e.g. PCM or ADPCM data). If the audio frames have a variable size 
+  // (e.g. MPEG audio), then it contains one frame.
+  //
+  // pkt->pts, pkt->dts and pkt->duration are always set to correct values 
+  // in AVStream.time_base units (and guessed if the format cannot provide 
+  // them). pkt->pts can be AV_NOPTS_VALUE if the video format has B-frames, 
+  // so it is better to rely on pkt->dts if you do not decompress the payload.
   /*
    * av_read_frame()读取一个包并且把它保存到AVPacket结构体中。
    * */
@@ -179,12 +200,78 @@ int main(int argc, char *argv[]) {
 	   * avcodec_decode_video2()把包转换为帧。 
 	   * */
       // Decode video frame
+	  //
+	  // int avcodec_decode_video2(AVCodecContext *avctx, AVFrame *picture,
+	  // int *got_picture_ptr, const AVPacket *avpkt)	
+	  //
+	  // Decode the video frame of size avpkt->size from avpkt->data 
+	  // into picture. Some decoders may support multiple frames in a 
+	  // single AVPacket, such decoders would then just decode the first frame.
+	  //
+	  // Parameters
+	  // 		avctx	the codec context
+	  // [out]	picture	The AVFrame in which the decoded video frame will 
+	  // 				be stored. Use av_frame_alloc() to get an AVFrame. 
+	  // 				The codec will allocate memory for the actual bitmap 
+	  // 				by calling the AVCodecContext.get_buffer2() callback. 
+	  // 				When AVCodecContext.refcounted_frames is set to 1, 
+	  // 				the frame is reference counted and the returned 
+	  // 				reference belongs to the caller. The caller must 
+	  // 				release the frame using av_frame_unref() when the 
+	  // 				frame is no longer needed. The caller may safely 
+	  // 				write to the frame if av_frame_is_writable() returns 
+	  // 				1. When AVCodecContext.refcounted_frames is set to 0, 
+	  // 				the returned reference belongs to the decoder and is 
+	  // 				valid only until the next call to this function or 
+	  // 				until closing or flushing the decoder. The caller may 
+	  // 				not write to it.
+	  // [in]	avpkt	The input AVPacket containing the input buffer. You 
+	  // 				can create such packet with av_init_packet() and by 
+	  // 				then setting data and size, some decoders might in 
+	  // 				addition need other fields like flags&AV_PKT_FLAG_KEY.
+	  // 				All decoders are designed to use the least fields 
+	  // 				possible.
+	  // [in,out] got_picture_ptr	Zero if no frame could be decompressed, 
+	  // 							otherwise, it is nonzero.
       avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, 
 			   &packet);
       
       // Did we get a video frame?
       if(frameFinished) {
 		// Convert the image from its native format to RGB
+		//
+		//
+		// int sws_scale(struct SwsContext *c,
+		// const uint8_t *const 	srcSlice[],
+		// const int 	srcStride[],
+		// int 	srcSliceY,
+		// int 	srcSliceH,
+		// uint8_t *const 	dst[],
+		// const int 	dstStride[] 
+		// )	
+		//
+	    // Scale the image slice in srcSlice and put the resulting scaled 
+		// slice in the image in dst. A slice is a sequence of consecutive 
+		// rows in an image. Slices have to be provided in sequential order, 
+		// either in top-bottom or bottom-top order. If slices are provided 
+		// in non-sequential order the behavior of the function is undefined.
+		//
+		//	Parameters
+		//	c			the scaling context previously created with 
+		//				sws_getContext()
+		//	srcSlice	the array containing the pointers to the planes 
+		//				of the source slice
+		//	srcStride	the array containing the strides for each plane 
+		//				of the source image
+		//	srcSliceY	the position in the source image of the slice to 
+		//				process, that is the number (counted starting from 
+		//				zero) in the image of the first row of the slice
+		//	srcSliceH	the height of the source slice, that is the number 
+		//				of rows in the slice
+		//	dst			the array containing the pointers to the planes of 
+		//				the destination image
+		//	dstStride	the array containing the strides for each plane of 
+		//				the destination image
         sws_scale
         (
             sws_ctx,
@@ -193,13 +280,12 @@ int main(int argc, char *argv[]) {
             0,
             pCodecCtx->height,
             pFrameRGB->data,
-            pFrameRGB->linesize
+            pFrameRGB->linesize //linesize : For video, size in bytes of each picture line.
         );
 	
 	// Save the frame to disk
 	if(++i<=5)
-	  SaveFrame(pFrameRGB, pCodecCtx->width, pCodecCtx->height, 
-		    i);
+		SaveFrame(pFrameRGB, pCodecCtx->width, pCodecCtx->height, i);
       }
     }
     

@@ -98,6 +98,8 @@ int main(int argc, char *argv[]) {
 
   // Make a screen to put our video
 #ifndef __DARWIN__
+  		// 创建一个suface, 第1和2个参数为屏幕的高度和宽度，0表示使用和当前一样
+		// 的深度。
         screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 0, 0);
 #else
         screen = SDL_SetVideoMode(pCodecCtx->width, pCodecCtx->height, 24, 0);
@@ -142,6 +144,10 @@ int main(int argc, char *argv[]) {
       if(frameFinished) {
 	SDL_LockYUVOverlay(bmp);
 
+	// 建立一个AVPicture结构体并且设置其数据指针和行尺寸(linesize).
+	// 
+	// 让pict.data中的三个数组指针指向我们的覆盖，这样我们写(数据) 到
+	// pict的时候，实际上是写入到我们的覆盖中。
 	AVPicture pict;
 	pict.data[0] = bmp->pixels[0];
 	pict.data[1] = bmp->pixels[2];
@@ -169,6 +175,9 @@ int main(int argc, char *argv[]) {
 	rect.y = 0;
 	rect.w = pCodecCtx->width;
 	rect.h = pCodecCtx->height;
+	//传递一个表面电影位置、应该缩放到什么宽度和高度的矩形参数给
+	//SDL函数，这样SDL为我们做缩放并且它可以通过使用显卡来进行快速
+	//缩放。
 	SDL_DisplayYUVOverlay(bmp, &rect);
       
       }
@@ -176,16 +185,16 @@ int main(int argc, char *argv[]) {
     
     // Free the packet that was allocated by av_read_frame
     av_free_packet(&packet);
+
     SDL_PollEvent(&event);
     switch(event.type) {
-    case SDL_QUIT:
-      SDL_Quit();
-      exit(0);
-      break;
-    default:
-      break;
+    	case SDL_QUIT:
+      		SDL_Quit();
+      		exit(0);
+      		break;
+    	default:
+      		break;
     }
-
   }
   
   // Free the YUV frame
