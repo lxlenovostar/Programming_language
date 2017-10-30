@@ -265,18 +265,31 @@ int main(int argc, char *argv[]) {
    
   aCodecCtx=pFormatCtx->streams[audioStream]->codec;
   // Set audio settings from codec info
+  // 包含在编解码上下文中的所有信息正是我们所需要的用来建立音频的信息。
+  // 设置采样率
   wanted_spec.freq = aCodecCtx->sample_rate;
+  // 告诉SDL我们将要给的格式。"S16SYS"中的S表示有符号的signed，16表示
+  // 每个样本是16位长的，SYS表示大小端的顺序是与使用的系统相同的。这些
+  // 格式是由avcodec_decode_audio2为我们给出来的输入音频的格式。
   wanted_spec.format = AUDIO_S16SYS;
+  // 音频的通道数
   wanted_spec.channels = aCodecCtx->channels;
+  // 表示静音的值。
   wanted_spec.silence = 0;
+  // 这是我们想要更多音频的时候，我们想让SDL给出来的音频缓冲区的尺寸。
+  // 一个比较合适的值在512到8192之间；ffplay使用1024.
   wanted_spec.samples = SDL_AUDIO_BUFFER_SIZE;
   wanted_spec.callback = audio_callback;
+  // 这个是SDL供给回调函数运行的参数。我们将让回调函数得到整个编解码的
+  // 上下文。
   wanted_spec.userdata = aCodecCtx;
   
+  // 打开音频
   if(SDL_OpenAudio(&wanted_spec, &spec) < 0) {
     fprintf(stderr, "SDL_OpenAudio: %s\n", SDL_GetError());
     return -1;
   }
+  // 打开音频编解码器本身
   aCodec = avcodec_find_decoder(aCodecCtx->codec_id);
   if(!aCodec) {
     fprintf(stderr, "Unsupported codec!\n");
