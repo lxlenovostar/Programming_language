@@ -35,6 +35,7 @@
 typedef struct PacketQueue {
   AVPacketList *first_pkt, *last_pkt;
   int nb_packets;
+  // size表示我们从packet->size中得到的字节数 
   int size;
   SDL_mutex *mutex;
   SDL_cond *cond;
@@ -64,18 +65,22 @@ int packet_queue_put(PacketQueue *q, AVPacket *pkt) {
   
   SDL_LockMutex(q->mutex);
   
+  // 从队尾加入
   if (!q->last_pkt)
     q->first_pkt = pkt1;
   else
     q->last_pkt->next = pkt1;
+
   q->last_pkt = pkt1;
   q->nb_packets++;
   q->size += pkt1->pkt.size;
+  // 发起信号通知有数据
   SDL_CondSignal(q->cond);
   
   SDL_UnlockMutex(q->mutex);
   return 0;
 }
+
 static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
 {
   AVPacketList *pkt1;
@@ -92,22 +97,29 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
 
     pkt1 = q->first_pkt;
     if (pkt1) {
-      q->first_pkt = pkt1->next;
-      if (!q->first_pkt)
-	q->last_pkt = NULL;
-      q->nb_packets--;
-      q->size -= pkt1->pkt.size;
-      *pkt = pkt1->pkt;
-      av_free(pkt1);
-      ret = 1;
-      break;
+    	q->first_pkt = pkt1->next;
+      	
+		if (!q->first_pkt)
+			q->last_pkt = NULL;
+
+      	q->nb_packets--;
+      	q->size -= pkt1->pkt.size;
+      	*pkt = pkt1->pkt;
+      	av_free(pkt1);
+      	ret = 1;
+      	break;
     } else if (!block) {
-      ret = 0;
-      break;
+      	ret = 0;
+      	break;
     } else {
-      SDL_CondWait(q->cond, q->mutex);
+		// SDL_CondWait 的行为如下：
+		// 1. unlock the mutex specified by mutex;
+		// 2. block the calling thread until another thread signals the condition variable
+		// 3. relock mutex
+      	SDL_CondWait(q->cond, q->mutex);
     }
   }
+
   SDL_UnlockMutex(q->mutex);
   return ret;
 }
@@ -167,6 +179,9 @@ int audio_decode_frame(AVCodecContext *aCodecCtx, uint8_t *audio_buf, int buf_si
   }
 }
 
+// userdata是SDL的指针
+// stream 是音频数据写入的缓冲区指针
+// len 是缓冲区的大小
 void audio_callback(void *userdata, Uint8 *stream, int len) {
 
   AVCodecContext *aCodecCtx = (AVCodecContext *)userdata;
@@ -299,6 +314,9 @@ int main(int argc, char *argv[]) {
 
   // audio_st = pFormatCtx->streams[index]
   packet_queue_init(&audioq);
+
+  //此函数让音频设备最终开始工作，如果没有立即提供
+  //足够的数据，它会播放静音。
   SDL_PauseAudio(0);
 
   // Get a pointer to the codec context for the video stream
@@ -394,10 +412,12 @@ int main(int argc, char *argv[]) {
 	av_free_packet(&packet);
       }
     } else if(packet.stream_index==audioStream) {
+	  // 我们没有在把包放到队列里的时候释放它，我们将在解码后来释放它。
       packet_queue_put(&audioq, &packet);
     } else {
       av_free_packet(&packet);
     }
+
     // Free the packet that was allocated by av_read_frame
     SDL_PollEvent(&event);
     switch(event.type) {
