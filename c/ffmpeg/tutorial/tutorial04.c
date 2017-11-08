@@ -655,6 +655,7 @@ int main(int argc, char *argv[]) {
 
   VideoState      *is;
 
+  // av_mallocz分配内存并初始化为0
   is = av_mallocz(sizeof(VideoState));
 
   if(argc < 2) {
@@ -680,18 +681,23 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  // av_strlcpy 比 strncpy更好，因为添加了边界检查。
   av_strlcpy(is->filename, argv[1], 1024);
 
   is->pictq_mutex = SDL_CreateMutex();
   is->pictq_cond = SDL_CreateCond();
 
+  // 此函数的作用是告诉系统在指定的毫秒数后发送FF_REFRESH_EVENT
+  // 事件。当它在实际队列里时，会回调视频刷新函数。
   schedule_refresh(is, 40);
 
+  // 开启线程
   is->parse_tid = SDL_CreateThread(decode_thread, is);
   if(!is->parse_tid) {
     av_free(is);
     return -1;
   }
+
   for(;;) {
 
     SDL_WaitEvent(&event);
