@@ -57,7 +57,7 @@ typedef struct PacketQueue {
 typedef struct VideoPicture {
   SDL_Overlay *bmp;
   int width, height; /* source height & width */
-  int allocated;
+  int allocated;	// 指示bmp的内存是否已经申请
 } VideoPicture;
 
 typedef struct VideoState {
@@ -516,6 +516,7 @@ int stream_component_open(VideoState *is, int stream_index) {
     is->video_st = pFormatCtx->streams[stream_index];
     
     packet_queue_init(&is->videoq);
+	// 启动音频和视频线程
     is->video_tid = SDL_CreateThread(video_thread, is);
     is->sws_ctx =
         sws_getContext
@@ -611,6 +612,7 @@ int decode_thread(void *arg) {
     if(is->quit) {
       break;
     }
+	// 音频和视频队列限定了一个最大值
     // seek stuff goes here
     if(is->audioq.size > MAX_AUDIOQ_SIZE ||
        is->videoq.size > MAX_VIDEOQ_SIZE) {
