@@ -482,20 +482,34 @@ int stream_component_open(VideoState *is, int stream_index) {
 
   if(codecCtx->codec_type == AVMEDIA_TYPE_AUDIO) {
     // Set audio settings from codec info
+  	// 包含在编解码上下文中的所有信息正是我们所需要的用来建立音频的信息。
+  	// 设置采样率
     wanted_spec.freq = codecCtx->sample_rate;
+  	// 告诉SDL我们将要给的格式。"S16SYS"中的S表示有符号的signed，16表示
+  	// 每个样本是16位长的，SYS表示大小端的顺序是与使用的系统相同的。这些
+  	// 格式是由avcodec_decode_audio2为我们给出来的输入音频的格式。
     wanted_spec.format = AUDIO_S16SYS;
+  	// 音频的通道数
     wanted_spec.channels = codecCtx->channels;
+  	// 表示静音的值。
     wanted_spec.silence = 0;
+  	// 这是我们想要更多音频的时候，我们想让SDL给出来的音频缓冲区的尺寸。
+  	// 一个比较合适的值在512到8192之间；ffplay使用1024.
     wanted_spec.samples = SDL_AUDIO_BUFFER_SIZE;
     wanted_spec.callback = audio_callback;
+  	// 这个是SDL供给回调函数运行的参数。
     wanted_spec.userdata = is;
     
+  	// 打开音频
     if(SDL_OpenAudio(&wanted_spec, &spec) < 0) {
       fprintf(stderr, "SDL_OpenAudio: %s\n", SDL_GetError());
       return -1;
     }
   }
+
+  // 打开音视频编解码器本身
   codec = avcodec_find_decoder(codecCtx->codec_id);
+  // Open codec
   if(!codec || (avcodec_open2(codecCtx, codec, &optionsDict) < 0)) {
     fprintf(stderr, "Unsupported codec!\n");
     return -1;
@@ -509,6 +523,8 @@ int stream_component_open(VideoState *is, int stream_index) {
     is->audio_buf_index = 0;
     memset(&is->audio_pkt, 0, sizeof(is->audio_pkt));
     packet_queue_init(&is->audioq);
+  	//此函数让音频设备最终开始工作，如果没有立即提供
+  	//足够的数据，它会播放静音。
     SDL_PauseAudio(0);
     break;
   case AVMEDIA_TYPE_VIDEO:
@@ -563,6 +579,27 @@ int decode_thread(void *arg) {
   // will interrupt blocking functions if we quit!
   callback.callback = decode_interrupt_cb;
   callback.opaque = is;
+  /*
+   * int avio_open2	(	AVIOContext ** 	s,
+   * 					const char * 	url,
+   * 					int 	flags,
+   * 					const AVIOInterruptCB * 	int_cb,
+   * 					AVDictionary ** 	options 
+   * )	
+   *
+   * Create and initialize a AVIOContext for accessing the resource 
+   * indicated by url.
+   *
+   * 
+   * s	Used to return the pointer to the created AVIOContext. In case of failure 
+   * 	the pointed to value is set to NULL.
+   * url	resource to access
+   * flags	flags which control how the resource indicated by url is to be opened
+   * int_cb	an interrupt callback to be used at the protocols level
+   * options	A dictionary filled with protocol-private options. On return this 
+   * 			parameter will be destroyed and replaced with a dict containing 
+   * 			options that were not found. May be NULL.
+   * */
   if (avio_open2(&is->io_context, is->filename, 0, &callback, &io_dict))
   {
     fprintf(stderr, "Unable to open I/O for %s\n", is->filename);
@@ -583,7 +620,6 @@ int decode_thread(void *arg) {
   av_dump_format(pFormatCtx, 0, is->filename, 0);
   
   // Find the first video stream
-
   for(i=0; i<pFormatCtx->nb_streams; i++) {
     if(pFormatCtx->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO &&
        video_index < 0) {
