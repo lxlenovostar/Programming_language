@@ -53,7 +53,6 @@ typedef struct PacketQueue {
   SDL_cond *cond;
 } PacketQueue;
 
-
 typedef struct VideoPicture {
   SDL_Overlay *bmp;
   int width, height; /* source height & width */
@@ -532,7 +531,7 @@ int stream_component_open(VideoState *is, int stream_index) {
     is->video_st = pFormatCtx->streams[stream_index];
     
     packet_queue_init(&is->videoq);
-	// 启动音频和视频线程
+	// 启动视频线程
     is->video_tid = SDL_CreateThread(video_thread, is);
     is->sws_ctx =
         sws_getContext
