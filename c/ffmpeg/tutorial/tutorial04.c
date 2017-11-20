@@ -292,6 +292,7 @@ void video_display(VideoState *is) {
   }
 }
 
+// 把数据从图像队列中取出
 void video_refresh_timer(void *userdata) {
 
   VideoState *is = (VideoState *)userdata;
