@@ -46,6 +46,12 @@
 #define VIDEO_PICTURE_QUEUE_SIZE 1
 
 typedef struct PacketQueue {
+  /*
+   * typedef struct AVPacketList {
+   *       AVPacket pkt;
+   *       struct AVPacketList *next;
+   * } AVPacketList;
+   * */
   AVPacketList *first_pkt, *last_pkt;
   int nb_packets;
   int size;
@@ -568,6 +574,31 @@ int decode_thread(void *arg) {
 
   VideoState *is = (VideoState *)arg;
   AVFormatContext *pFormatCtx = NULL;
+  /*
+   * This structure stores compressed data.
+   *
+   * It is typically exported by demuxers and then passed as input to decoders, 
+   * or received as output from encoders and then passed to muxers.
+   *
+   * For video, it should typically contain one compressed frame. For audio it 
+   * may contain several compressed frames. Encoders are allowed to output 
+   * empty packets, with no compressed data, containing only side data 
+   * (e.g. to update some stream parameters at the end of encoding).
+   *
+   * AVPacket is one of the few structs in FFmpeg, whose size is a part of 
+   * public ABI. Thus it may be allocated on stack and no new fields can be 
+   * added to it without libavcodec and libavformat major bump.
+   *
+   * The semantics of data ownership depends on the buf field. If it is set, 
+   * the packet data is dynamically allocated and is valid indefinitely until 
+   * a call to av_packet_unref() reduces the reference count to 0.
+   *
+   * If the buf field is not set av_packet_ref() would make a copy instead of 
+   * increasing the reference count.
+   *
+   * The side data is always allocated with av_malloc(), copied by 
+   * av_packet_ref() and freed by av_packet_unref().
+   * */
   AVPacket pkt1, *packet = &pkt1;
 
   int video_index = -1;
@@ -575,6 +606,16 @@ int decode_thread(void *arg) {
   int i;
 
   AVDictionary *io_dict = NULL;
+  /*
+   * Callback for checking whether to abort blocking functions.
+   *
+   * AVERROR_EXIT is returned in this case by the interrupted function. 
+   * During blocking operations, callback is called with opaque as parameter. 
+   * If the callback returns 1, the blocking operation will be aborted.
+   *
+   * No members can be added to this struct without a major bump, if new elements 
+   * have been added after this struct in AVFormatContext or AVIOContext.
+   * */
   AVIOInterruptCB callback;
 
   is->videoStream=-1;
@@ -584,6 +625,7 @@ int decode_thread(void *arg) {
   // will interrupt blocking functions if we quit!
   callback.callback = decode_interrupt_cb;
   callback.opaque = is;
+
   /*
    * int avio_open2	(	AVIOContext ** 	s,
    * 					const char * 	url,
@@ -605,6 +647,7 @@ int decode_thread(void *arg) {
    * 			parameter will be destroyed and replaced with a dict containing 
    * 			options that were not found. May be NULL.
    * */
+  // 函数用于打开FFmpeg的输入输出文件
   if (avio_open2(&is->io_context, is->filename, 0, &callback, &io_dict))
   {
     fprintf(stderr, "Unable to open I/O for %s\n", is->filename);
@@ -612,12 +655,16 @@ int decode_thread(void *arg) {
   }
 
   // Open video file
+  // 该函数用于打开多媒体数据并且获得一些相关的信息。
+  // 它的声明位于libavformat\avformat.h
   if(avformat_open_input(&pFormatCtx, is->filename, NULL, NULL)!=0)
     return -1; // Couldn't open file
 
   is->pFormatCtx = pFormatCtx;
   
   // Retrieve stream information
+  // 该函数可以读取一部分视音频数据并且获得一些相关的信息。
+  // avformat_find_stream_info()的声明位于libavformat\avformat.h
   if(avformat_find_stream_info(pFormatCtx, NULL)<0)
     return -1; // Couldn't find stream information
   
@@ -655,26 +702,29 @@ int decode_thread(void *arg) {
     }
 	// 音频和视频队列限定了一个最大值
     // seek stuff goes here
-    if(is->audioq.size > MAX_AUDIOQ_SIZE ||
-       is->videoq.size > MAX_VIDEOQ_SIZE) {
-      SDL_Delay(10);
-      continue;
+    if(is->audioq.size > MAX_AUDIOQ_SIZE || is->videoq.size > MAX_VIDEOQ_SIZE) {
+    	SDL_Delay(10);
+      	continue;
     }
+	// ffmpeg中的av_read_frame()的作用是读取码流中的音频若干帧
+	// 或者视频一帧。例如，解码视频的时候，每解码一个视频帧，需要先
+	// 调用 av_read_frame()获得一帧视频的压缩数据，然后才能对该数据
+	// 进行解码（例如H.264中一帧压缩数据通常对应一个NAL）。
     if(av_read_frame(is->pFormatCtx, packet) < 0) {
-      if(is->pFormatCtx->pb->error == 0) {
-	SDL_Delay(100); /* no error; wait for user input */
-	continue;
-      } else {
-	break;
-      }
+    	if(is->pFormatCtx->pb->error == 0) {
+			SDL_Delay(100); /* no error; wait for user input */
+			continue;
+      	} else {
+			break;
+      	}
     }
     // Is this a packet from the video stream?
     if(packet->stream_index == is->videoStream) {
-      packet_queue_put(&is->videoq, packet);
+    	packet_queue_put(&is->videoq, packet);
     } else if(packet->stream_index == is->audioStream) {
-      packet_queue_put(&is->audioq, packet);
+    	packet_queue_put(&is->audioq, packet);
     } else {
-      av_free_packet(packet);
+    	av_free_packet(packet);
     }
   }
   /* all done - wait for it */
