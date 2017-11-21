@@ -259,6 +259,7 @@ void video_display(VideoState *is) {
   SDL_Rect rect;
   VideoPicture *vp;
   //AVPicture pict;
+  //纵横比
   float aspect_ratio;
   int w, h, x, y;
   //int i;
@@ -276,6 +277,8 @@ void video_display(VideoState *is) {
 	(float)is->video_st->codec->height;
     }
     h = screen->h;
+	// The & -3 bit-twiddling in there simply rounds the value to 
+	// the nearest multiple of 4. 
     w = ((int)rint(h * aspect_ratio)) & -3;
     if(w > screen->w) {
       w = screen->w;
@@ -311,6 +314,7 @@ void video_refresh_timer(void *userdata) {
 	 the timing - but I don't suggest that ;)
 	 We'll learn how to do it for real later.
       */
+	  // 为下一帧设置定时器
       schedule_refresh(is, 80);
       
       /* show the picture! */
@@ -318,9 +322,10 @@ void video_refresh_timer(void *userdata) {
       
       /* update queue for next picture! */
       if(++is->pictq_rindex == VIDEO_PICTURE_QUEUE_SIZE) {
-	is->pictq_rindex = 0;
+		is->pictq_rindex = 0;
       }
       SDL_LockMutex(is->pictq_mutex);
+	  // 队列的大小减1
       is->pictq_size--;
       SDL_CondSignal(is->pictq_cond);
       SDL_UnlockMutex(is->pictq_mutex);
