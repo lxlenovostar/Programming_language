@@ -476,6 +476,10 @@ int video_thread(void *arg) {
   return 0;
 }
 
+/*
+ * 初始化音频选项，将重要的信息保存到我们大的结构，并启动
+ * 音频和视频线程。
+ * */
 int stream_component_open(VideoState *is, int stream_index) {
 
   AVFormatContext *pFormatCtx = is->pFormatCtx;
