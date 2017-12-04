@@ -82,7 +82,7 @@ typedef struct VideoState {
   PacketQueue     videoq;
 
   VideoPicture    pictq[VIDEO_PICTURE_QUEUE_SIZE];
-  int             pictq_size, pictq_rindex, pictq_windex;
+  int             pictq_size, pictq_rindex, pictq_windex; 	// pictq_rindex 是读指针， pictq_windex 是写指针
   SDL_mutex       *pictq_mutex;
   SDL_cond        *pictq_cond;
   
@@ -351,6 +351,7 @@ void alloc_picture(void *userdata) {
     // we already have one make another, bigger/smaller
     SDL_FreeYUVOverlay(vp->bmp);
   }
+
   // Allocate a place to put our YUV image on that screen
   vp->bmp = SDL_CreateYUVOverlay(is->video_st->codec->width,
 				 is->video_st->codec->height,
@@ -460,6 +461,20 @@ int video_thread(void *arg) {
       // means we quit getting packets
       break;
     }
+
+	/*
+	 * int avcodec_decode_video2	(	AVCodecContext * 	avctx,
+	 * AVFrame * 	picture,
+	 * int * 	got_picture_ptr,
+	 * const AVPacket * 	avpkt 
+	 * )		
+	 *
+	 *  Decode the video frame of size avpkt->size from avpkt->data 
+	 *  into picture.
+	 *
+	 * Some decoders may support multiple frames in a single AVPacket, 
+	 * such decoders would then just decode the first frame.
+	 * */
     // Decode video frame
     avcodec_decode_video2(is->video_st->codec, pFrame, &frameFinished, 
 				packet);
