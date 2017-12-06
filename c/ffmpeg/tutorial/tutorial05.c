@@ -513,8 +513,21 @@ double synchronize_video(VideoState *is, AVFrame *src_frame, double pts) {
     /* if we aren't given a pts, set it to the clock */
     pts = is->video_clock;
   }
+
+  /*
+   * static double av_q2d	(AVRational 	a)	
+   *
+   * Convert rational to double.
+   *
+   * Parameters
+   * 	a	rational to convert
+   *
+   * Returns
+   * 	(double) a
+   * */
   /* update the video clock */
   frame_delay = av_q2d(is->video_st->codec->time_base);
+
   /* if we are repeating a frame, adjust clock accordingly */
   frame_delay += src_frame->repeat_pict * (frame_delay * 0.5);
   is->video_clock += frame_delay;
@@ -527,6 +540,18 @@ uint64_t global_video_pkt_pts = AV_NOPTS_VALUE;
  * a frame at the time it is allocated.
  */
 int our_get_buffer(struct AVCodecContext *c, AVFrame *pic) {
+  	/*
+	 * 
+	 * int avcodec_default_get_buffer2(AVCodecContext * 	s,
+	 * AVFrame * 	frame,
+	 * int 	flags 
+	 * )	
+	 *
+	 * The default callback for AVCodecContext.get_buffer2().
+	 *
+	 * It is made public so it can be called by custom get_buffer2() 
+	 * implementations for decoders without AV_CODEC_CAP_DR1 set.
+	 * */
   int ret = avcodec_default_get_buffer(c, pic);
   uint64_t *pts = av_malloc(sizeof(uint64_t));
   *pts = global_video_pkt_pts;
@@ -535,6 +560,7 @@ int our_get_buffer(struct AVCodecContext *c, AVFrame *pic) {
 }
 void our_release_buffer(struct AVCodecContext *c, AVFrame *pic) {
   if(pic) av_freep(&pic->opaque);
+
   avcodec_default_release_buffer(c, pic);
 }
 
@@ -556,9 +582,18 @@ int video_thread(void *arg) {
 
     // Save global pts to be stored in pFrame in first call
     global_video_pkt_pts = packet->pts;
+
     // Decode video frame
     avcodec_decode_video2(is->video_st->codec, pFrame, &frameFinished, 
 				packet);
+	/*
+	 * #define AV_NOPTS_VALUE   ((int64_t)UINT64_C(0x8000000000000000))
+	 *
+	 * Undefined timestamp value.
+	 *
+	 * Usually reported by demuxer that work on containers that do not 
+	 * provide either pts or dts.
+	 * */
     if(packet->dts == AV_NOPTS_VALUE 
        && pFrame->opaque && *(uint64_t*)pFrame->opaque != AV_NOPTS_VALUE) {
       pts = *(uint64_t *)pFrame->opaque;
@@ -653,6 +688,12 @@ int stream_component_open(VideoState *is, int stream_index) {
             NULL, 
             NULL
         );
+	/*
+	 *  int(* AVCodecContext::get_buffer2)(struct AVCodecContext *s, AVFrame *frame, int flags)
+	 *
+	 *  This callback is called at the beginning of each frame to get 
+	 *  data buffer(s) for it.
+	 * */
     codecCtx->get_buffer2 = our_get_buffer;
     codecCtx->release_buffer = our_release_buffer;
     break;
