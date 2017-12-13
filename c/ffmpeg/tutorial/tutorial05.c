@@ -559,7 +559,9 @@ int our_get_buffer(struct AVCodecContext *c, AVFrame *pic) {
   return ret;
 }
 void our_release_buffer(struct AVCodecContext *c, AVFrame *pic) {
-  if(pic) av_freep(&pic->opaque);
+  // 这里应该不需要取地址
+  //if(pic) av_freep(&pic->opaque);
+  if(pic) av_freep(pic->opaque);
 
   avcodec_default_release_buffer(c, pic);
 }
