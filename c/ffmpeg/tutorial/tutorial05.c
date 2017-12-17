@@ -359,28 +359,34 @@ void video_refresh_timer(void *userdata) {
       /* Skip or repeat the frame. Take delay into account
 	 FFPlay still doesn't "know if this is the best guess." */
       sync_threshold = (delay > AV_SYNC_THRESHOLD) ? delay : AV_SYNC_THRESHOLD;
+
       if(fabs(diff) < AV_NOSYNC_THRESHOLD) {
-	if(diff <= -sync_threshold) {
-	  delay = 0;
-	} else if(diff >= sync_threshold) {
-	  delay = 2 * delay;
-	}
+			if(diff <= -sync_threshold) {
+	  			delay = 0;
+			} else if(diff >= sync_threshold) {
+	  			delay = 2 * delay;
+			}
       }
+
       is->frame_timer += delay;
+
       /* computer the REAL delay */
       actual_delay = is->frame_timer - (av_gettime() / 1000000.0);
+
       if(actual_delay < 0.010) {
-	/* Really it should skip the picture instead */
-	actual_delay = 0.010;
+		/* Really it should skip the picture instead */
+		actual_delay = 0.010;
       }
+
       schedule_refresh(is, (int)(actual_delay * 1000 + 0.5));
       /* show the picture! */
       video_display(is);
       
       /* update queue for next picture! */
       if(++is->pictq_rindex == VIDEO_PICTURE_QUEUE_SIZE) {
-	is->pictq_rindex = 0;
+		is->pictq_rindex = 0;
       }
+
       SDL_LockMutex(is->pictq_mutex);
       is->pictq_size--;
       SDL_CondSignal(is->pictq_cond);
@@ -515,6 +521,20 @@ double synchronize_video(VideoState *is, AVFrame *src_frame, double pts) {
   }
 
   /*
+   * AVRational AVStream::time_base
+   * 
+   * This is the fundamental unit of time (in seconds) in terms of which 
+   * frame timestamps are represented.
+   *
+   * decoding: set by libavformat encoding: May be set by the caller before 
+   * avformat_write_header() to provide a hint to the muxer about the 
+   * desired timebase. In avformat_write_header(), the muxer will overwrite 
+   * this field with the timebase that will actually be used for the 
+   * timestamps written into the file (which may or may not be related to 
+   * the user-provided one, depending on the format).
+   * */
+
+  /*
    * static double av_q2d	(AVRational 	a)	
    *
    * Convert rational to double.
@@ -604,6 +624,10 @@ int video_thread(void *arg) {
     } else {
       pts = 0;
     }
+	/*
+	 * PTS是以整型来保存的。这个值是一个时间戳相当于时间的度量，用来以
+	 * 流的time_base为单位进行时间度量。
+	 * */
     pts *= av_q2d(is->video_st->time_base);
 
     // Did we get a video frame?
