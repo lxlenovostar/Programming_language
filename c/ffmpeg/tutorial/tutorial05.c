@@ -78,7 +78,7 @@ typedef struct VideoState {
   uint8_t         *audio_pkt_data;
   int             audio_pkt_size;
   int             audio_hw_buf_size;  
-  double          frame_timer;
+  double          frame_timer;	//系统时钟,用来显示下一帧.
   double          frame_last_pts;
   double          frame_last_delay;
   double          video_clock; ///<pts of last decoded frame / predicted pts of next decoded frame
