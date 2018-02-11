@@ -243,6 +243,19 @@ int audio_decode_frame(VideoState *is, double *pts_ptr) {
     }
     is->audio_pkt_data = pkt->data;
     is->audio_pkt_size = pkt->size;
+	/*
+	 * time_base 
+	 *
+	 * This is the fundamental unit of time (in seconds) in terms of 
+	 * which frame timestamps are represented.
+	 *
+	 * decoding: set by libavformat encoding: May be set by the caller 
+	 * before avformat_write_header() to provide a hint to the muxer 
+	 * about the desired timebase. In avformat_write_header(), the muxer 
+	 * will overwrite this field with the timebase that will actually be 
+	 * used for the timestamps written into the file (which may or may 
+	 * not be related to the user-provided one, depending on the format).
+	 * */
     /* if update, update the audio clock w/pts */
     if(pkt->pts != AV_NOPTS_VALUE) {
       is->audio_clock = av_q2d(is->audio_st->time_base)*pkt->pts;
@@ -345,8 +358,12 @@ void video_refresh_timer(void *userdata) {
 
       delay = vp->pts - is->frame_last_pts; /* the pts from last time */
       if(delay <= 0 || delay >= 1.0) {
-	/* if incorrect delay, use previous one */
-	delay = is->frame_last_delay;
+		/*
+		 * 保证现在的时间戳和上一个时间戳之间的delay是有意义，否则
+		 * 使用上次的延迟。
+		 * */
+		/* if incorrect delay, use previous one */
+		delay = is->frame_last_delay;
       }
       /* save for next time */
       is->frame_last_delay = delay;
@@ -356,13 +373,16 @@ void video_refresh_timer(void *userdata) {
       ref_clock = get_audio_clock(is);
       diff = vp->pts - ref_clock;
 
+	  /*
+	   * ffplay使用0.01秒作为同步阀值
+	   * */
       /* Skip or repeat the frame. Take delay into account
 	 FFPlay still doesn't "know if this is the best guess." */
       sync_threshold = (delay > AV_SYNC_THRESHOLD) ? delay : AV_SYNC_THRESHOLD;
 
       if(fabs(diff) < AV_NOSYNC_THRESHOLD) {
 			if(diff <= -sync_threshold) {
-	  			delay = 0;
+	  			delay = 0;	//更快刷新
 			} else if(diff >= sync_threshold) {
 	  			delay = 2 * delay;
 			}
@@ -370,9 +390,11 @@ void video_refresh_timer(void *userdata) {
 
       is->frame_timer += delay;
 
+	  // av_gettime(): Get the current time in microseconds.
       /* computer the REAL delay */
       actual_delay = is->frame_timer - (av_gettime() / 1000000.0);
 
+	  // 最小的刷新值设置为10毫秒
       if(actual_delay < 0.010) {
 		/* Really it should skip the picture instead */
 		actual_delay = 0.010;
