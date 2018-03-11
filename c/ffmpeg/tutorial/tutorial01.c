@@ -25,6 +25,8 @@
 
 #define PIX_FMT_RGB24 24
 
+// gcc -o tutorial01 tutorial01.c -lavutil -lavformat -lavcodec -lz -lavutil -lm -lpthread -lswresample -lswscale
+
 void SaveFrame(AVFrame *pFrame, int width, int height, int iFrame) {
   FILE *pFile;
   char szFilename[32];
