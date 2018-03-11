@@ -26,6 +26,8 @@
 #undef main /* Prevents SDL from overriding main() */
 #endif
 
+// gcc -o tutorial02 tutorial02.c -lavutil -lavformat -lavcodec -lz -lavutil -lm -lpthread -lswresample -lswscale `sdl-config --cflags --libs`
+
 #include <stdio.h>
 
 int main(int argc, char *argv[]) {
