@@ -32,6 +32,8 @@
 #define SDL_AUDIO_BUFFER_SIZE 1024
 #define MAX_AUDIO_FRAME_SIZE 192000
 
+//gcc -o tutorial03 tutorial03.c -lavutil -lavformat -lavcodec -lz -lavutil -lm -lpthread -lswresample -lswscale `sdl-config --cflags --libs`
+
 typedef struct PacketQueue {
   AVPacketList *first_pkt, *last_pkt;
   int nb_packets;
