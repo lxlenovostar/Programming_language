@@ -507,7 +507,7 @@ int stream_component_open(VideoState *is, int stream_index) {
     return -1;
   }
 
-  // Get a pointer to the codec context for the video stream
+  // Get a pointer to the codec context for the audio/video stream
   codecCtx = pFormatCtx->streams[stream_index]->codec;
 
   if(codecCtx->codec_type == AVMEDIA_TYPE_AUDIO) {
@@ -564,6 +564,32 @@ int stream_component_open(VideoState *is, int stream_index) {
     packet_queue_init(&is->videoq);
 	// 启动视频线程
     is->video_tid = SDL_CreateThread(video_thread, is);
+
+	/** 
+	 * Allocate and return an SwsContext. You need it to perform 
+	 * scaling/conversion operations using sws_scale(). 
+	 * 
+	 * @param srcW the width of the source image 
+	 * @param srcH the height of the source image 
+	 * @param srcFormat the source image format 
+	 * @param dstW the width of the destination image 
+	 * @param dstH the height of the destination image 
+	 * @param dstFormat the destination image format 
+	 * @param flags specify which algorithm and options to use for rescaling 
+	 * @return a pointer to an allocated context, or NULL in case of error 
+	 * @note this function is to be removed after a saner alternative is 
+	 * written 
+	 */  
+	/*
+	 * srcW: 源图像的宽
+	 * srcH: 源图像的高
+	 * srcFormat:源图像的像素格式
+	 * dstW: 目标图像的宽
+	 * dstH: 目标图像的高
+	 * dstFormat: 目标图像的像素格式
+	 * flags:设定图像拉伸使用的算法
+	 * 成功执行的话返回生成的SwcContext, 否则返回NULL.
+	 * */
     is->sws_ctx =
         sws_getContext
         (
