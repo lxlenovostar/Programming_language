@@ -476,6 +476,8 @@ int video_thread(void *arg) {
 	 * such decoders would then just decode the first frame.
 	 * */
     // Decode video frame
+	// 函数的作用：解码一帧视频数据。输入一个压缩编码的结构体AVPacket,
+	// 输出一个解码后的结构体AVFrame。
     avcodec_decode_video2(is->video_st->codec, pFrame, &frameFinished, 
 				packet);
 
