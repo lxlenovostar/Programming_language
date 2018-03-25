@@ -60,6 +60,18 @@ typedef struct PacketQueue {
 } PacketQueue;
 
 typedef struct VideoPicture {
+  /*
+   * SDL_Overlay -- YUV video overlay
+   *
+   * typedef struct{
+   * 	Uint32 format;
+   *    int w, h;
+   *    int planes;
+   *    Uint16 *pitches;
+   *    Uint8 **pixels;
+   *    Uint32 hw_overlay:1;
+   * } SDL_Overlay;
+   * */
   SDL_Overlay *bmp;
   int width, height; /* source height & width */
   int allocated;	// 指示bmp的内存是否已经申请
@@ -370,6 +382,7 @@ void alloc_picture(void *userdata) {
 int queue_picture(VideoState *is, AVFrame *pFrame) {
 
   VideoPicture *vp;
+  // TODO 需要确认
   AVPicture pict;
 
   /* wait until we have space for a new pic */
@@ -424,6 +437,7 @@ int queue_picture(VideoState *is, AVFrame *pFrame) {
     pict.linesize[1] = vp->bmp->pitches[2];
     pict.linesize[2] = vp->bmp->pitches[1];
     
+  	// TODO 需要确认
     // Convert the image into YUV format that SDL uses
     sws_scale
     (
