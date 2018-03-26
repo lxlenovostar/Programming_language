@@ -60,6 +60,18 @@ typedef struct PacketQueue {
 } PacketQueue;
 
 typedef struct VideoPicture {
+  /*
+   * SDL_Overlay -- YUV video overlay
+   *
+   * typedef struct{
+   * 	Uint32 format;
+   *    int w, h;
+   *    int planes;
+   *    Uint16 *pitches;
+   *    Uint8 **pixels;
+   *    Uint32 hw_overlay:1;
+   * } SDL_Overlay;
+   * */
   SDL_Overlay *bmp;
   int width, height; /* source height & width */
   int allocated;	// 指示bmp的内存是否已经申请
@@ -370,6 +382,7 @@ void alloc_picture(void *userdata) {
 int queue_picture(VideoState *is, AVFrame *pFrame) {
 
   VideoPicture *vp;
+  // TODO 需要确认
   AVPicture pict;
 
   /* wait until we have space for a new pic */
@@ -424,6 +437,7 @@ int queue_picture(VideoState *is, AVFrame *pFrame) {
     pict.linesize[1] = vp->bmp->pitches[2];
     pict.linesize[2] = vp->bmp->pitches[1];
     
+  	// TODO 需要确认
     // Convert the image into YUV format that SDL uses
     sws_scale
     (
@@ -476,6 +490,8 @@ int video_thread(void *arg) {
 	 * such decoders would then just decode the first frame.
 	 * */
     // Decode video frame
+	// 函数的作用：解码一帧视频数据。输入一个压缩编码的结构体AVPacket,
+	// 输出一个解码后的结构体AVFrame。
     avcodec_decode_video2(is->video_st->codec, pFrame, &frameFinished, 
 				packet);
 
@@ -507,7 +523,7 @@ int stream_component_open(VideoState *is, int stream_index) {
     return -1;
   }
 
-  // Get a pointer to the codec context for the video stream
+  // Get a pointer to the codec context for the audio/video stream
   codecCtx = pFormatCtx->streams[stream_index]->codec;
 
   if(codecCtx->codec_type == AVMEDIA_TYPE_AUDIO) {
@@ -564,6 +580,32 @@ int stream_component_open(VideoState *is, int stream_index) {
     packet_queue_init(&is->videoq);
 	// 启动视频线程
     is->video_tid = SDL_CreateThread(video_thread, is);
+
+	/** 
+	 * Allocate and return an SwsContext. You need it to perform 
+	 * scaling/conversion operations using sws_scale(). 
+	 * 
+	 * @param srcW the width of the source image 
+	 * @param srcH the height of the source image 
+	 * @param srcFormat the source image format 
+	 * @param dstW the width of the destination image 
+	 * @param dstH the height of the destination image 
+	 * @param dstFormat the destination image format 
+	 * @param flags specify which algorithm and options to use for rescaling 
+	 * @return a pointer to an allocated context, or NULL in case of error 
+	 * @note this function is to be removed after a saner alternative is 
+	 * written 
+	 */  
+	/*
+	 * srcW: 源图像的宽
+	 * srcH: 源图像的高
+	 * srcFormat:源图像的像素格式
+	 * dstW: 目标图像的宽
+	 * dstH: 目标图像的高
+	 * dstFormat: 目标图像的像素格式
+	 * flags:设定图像拉伸使用的算法
+	 * 成功执行的话返回生成的SwcContext, 否则返回NULL.
+	 * */
     is->sws_ctx =
         sws_getContext
         (
