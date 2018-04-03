@@ -6,6 +6,8 @@ and may not be redistributed without written permission.*/
 #include "SDL/SDL_image.h"
 #include <string>
 
+// g++ -g -Wall  lesson03.cpp  `sdl-config --cflags --libs`
+
 //Screen attributes
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
@@ -17,25 +19,31 @@ SDL_Surface *screen = NULL;
 
 SDL_Surface *load_image( std::string filename )
 {
+	// 加载的图像
     //The image that's loaded
     SDL_Surface* loadedImage = NULL;
 
+	// 优化后的图像
     //The optimized image that will be used
     SDL_Surface* optimizedImage = NULL;
 
+	// 使用SDL_image加载图像
     //Load the image using SDL_image
     loadedImage = IMG_Load( filename.c_str() );
 
     //If the image loaded
     if( loadedImage != NULL )
     {
+		// 创建一个优化后的图像
         //Create an optimized image
         optimizedImage = SDL_DisplayFormat( loadedImage );
 
+		// 释放原先加载的图像
         //Free the old image
         SDL_FreeSurface( loadedImage );
     }
 
+	// 返回优化后的图像
     //Return the optimized image
     return optimizedImage;
 }
