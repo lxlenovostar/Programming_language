@@ -6,7 +6,7 @@ and may not be redistributed without written permission.*/
 #include "SDL/SDL_image.h"
 #include <string>
 
-// g++ -g -Wall  lesson03.cpp  `sdl-config --cflags --libs`
+// g++ -g -Wall  lesson03.cpp  `sdl-config --cflags --libs` -lSDL_image
 
 //Screen attributes
 const int SCREEN_WIDTH = 640;
