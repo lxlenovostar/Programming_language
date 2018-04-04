@@ -57,6 +57,9 @@ void apply_surface( int x, int y, SDL_Surface* source, SDL_Surface* destination 
     offset.x = x;
     offset.y = y;
 
+	// 第一个参数是我们的源表面
+	// 第三个参数为我们将要Blit的目标表面
+	// 第四个参数为保存了Blit的目标位置
     //Blit the surface
     SDL_BlitSurface( source, NULL, destination, &offset );
 }
