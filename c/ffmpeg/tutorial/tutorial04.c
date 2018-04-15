@@ -264,6 +264,7 @@ static Uint32 sdl_refresh_timer_cb(Uint32 interval, void *opaque) {
   event.type = FF_REFRESH_EVENT;
   event.user.data1 = opaque;
   SDL_PushEvent(&event);
+  // 返回0的时候，SDL停止定时器，于是回调就不会再发生。
   return 0; /* 0 means stop timer */
 }
 
@@ -335,6 +336,7 @@ void video_refresh_timer(void *userdata) {
 	  // 为下一帧设置定时器
       schedule_refresh(is, 80);
       
+	  // 用来真正显示图像到屏幕上
       /* show the picture! */
       video_display(is);
       
@@ -437,7 +439,7 @@ int queue_picture(VideoState *is, AVFrame *pFrame) {
     pict.linesize[1] = vp->bmp->pitches[2];
     pict.linesize[2] = vp->bmp->pitches[1];
     
-  	// TODO 需要确认
+	// TODO: 这里的pict到底有什么用的呢？
     // Convert the image into YUV format that SDL uses
     sws_scale
     (
