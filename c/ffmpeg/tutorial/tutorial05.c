@@ -80,7 +80,7 @@ typedef struct VideoState {
   int             audio_hw_buf_size;  
   double          frame_timer;	//系统时钟,用来显示下一帧.
   double          frame_last_pts;
-  double          frame_last_delay;
+  double          frame_last_delay; //帧延迟
   double          video_clock; ///<pts of last decoded frame / predicted pts of next decoded frame
   AVStream        *video_st;
   PacketQueue     videoq;
