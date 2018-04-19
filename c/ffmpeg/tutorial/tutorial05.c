@@ -199,9 +199,9 @@ int audio_decode_frame(VideoState *is, double *pts_ptr) {
       int got_frame;
       len1 = avcodec_decode_audio4(is->audio_st->codec, &is->audio_frame, &got_frame, pkt);
       if(len1 < 0) {
-	/* if error, skip frame */
-	is->audio_pkt_size = 0;
-	break;
+			/* if error, skip frame */
+			is->audio_pkt_size = 0;
+			break;
       }
       if (got_frame)
       {
@@ -219,30 +219,34 @@ int audio_decode_frame(VideoState *is, double *pts_ptr) {
       is->audio_pkt_data += len1;
       is->audio_pkt_size -= len1;
       if(data_size <= 0) {
-	/* No data yet, get more frames */
-	continue;
+	  	/* No data yet, get more frames */
+		continue;
       }
       pts = is->audio_clock;
       *pts_ptr = pts;
       n = 2 * is->audio_st->codec->channels;
-      is->audio_clock += (double)data_size /
-	(double)(n * is->audio_st->codec->sample_rate);
+	  // TODO 理解audio_clock的作用
+      is->audio_clock += (double)data_size / (double)(n * is->audio_st->codec->sample_rate);
 
       /* We have data, return it and come back for more later */
       return data_size;
     }
+
     if(pkt->data)
       av_free_packet(pkt);
 
     if(is->quit) {
       return -1;
     }
+
     /* next packet */
     if(packet_queue_get(&is->audioq, pkt, 1) < 0) {
       return -1;
     }
+
     is->audio_pkt_data = pkt->data;
     is->audio_pkt_size = pkt->size;
+
 	/*
 	 * time_base 
 	 *
@@ -257,8 +261,9 @@ int audio_decode_frame(VideoState *is, double *pts_ptr) {
 	 * not be related to the user-provided one, depending on the format).
 	 * */
     /* if update, update the audio clock w/pts */
+	// 我们得到新的包的时候，我们简单的设置音频时钟为这个包的时间戳。
     if(pkt->pts != AV_NOPTS_VALUE) {
-      is->audio_clock = av_q2d(is->audio_st->time_base)*pkt->pts;
+    	is->audio_clock = av_q2d(is->audio_st->time_base)*pkt->pts;
     }
 
   }
