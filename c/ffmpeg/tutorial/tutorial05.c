@@ -197,6 +197,18 @@ int audio_decode_frame(VideoState *is, double *pts_ptr) {
   for(;;) {
     while(is->audio_pkt_size > 0) {
       int got_frame;
+	  /*
+	   * int avcodec_decode_audio4	(	AVCodecContext * 	avctx,
+	   * AVFrame * 	frame,
+	   * int * 	got_frame_ptr,
+	   * const AVPacket * 	avpkt 
+	   * )		
+	   * Decode the audio frame of size avpkt->size from avpkt->data into frame.
+	   *
+	   * Some decoders may support multiple frames in a single AVPacket. Such decoders would then just decode the first frame and the return value would be less than the packet size. In this case, avcodec_decode_audio4 has to be called again with an AVPacket containing the remaining data in order to decode the second frame, etc... Even if no frames are returned, the packet needs to be fed to the decoder with remaining data until it is completely consumed or an error occurs.
+	   *
+	   * Some decoders (those marked with AV_CODEC_CAP_DELAY) have a delay between input and output. This means that for some packets they will not immediately produce decoded output and need to be flushed at the end of decoding to get all the decoded data. Flushing is done by calling this function with packets with avpkt->data set to NULL and avpkt->size set to 0 until it stops returning samples. It is safe to flush even those decoders that are not marked with AV_CODEC_CAP_DELAY, then no samples will be returned.
+	   * */
       len1 = avcodec_decode_audio4(is->audio_st->codec, &is->audio_frame, &got_frame, pkt);
       if(len1 < 0) {
 			/* if error, skip frame */
