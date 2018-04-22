@@ -757,6 +757,7 @@ int stream_component_open(VideoState *is, int stream_index) {
     wanted_spec.channels = codecCtx->channels;
     wanted_spec.silence = 0;
     wanted_spec.samples = SDL_AUDIO_BUFFER_SIZE;
+	// SDL的音频回调函数
     wanted_spec.callback = audio_callback;
     wanted_spec.userdata = is;
     
