@@ -26,7 +26,7 @@
 #undef main /* Prevents SDL from overriding main() */
 #endif
 
-// gcc -o tutorial02 tutorial02.c -lavutil -lavformat -lavcodec -lz -lavutil -lm -lpthread -lswresample -lswscale `sdl-config --cflags --libs`
+//  gcc -o tutorial02 tutorial02.c -lavutil -lavformat -lavcodec  -lavutil -lx264 -lx265   -lpthread -lswresample -lswscale -lm -lz -llzma `sdl-config --cflags --libs`
 
 #include <stdio.h>
 
