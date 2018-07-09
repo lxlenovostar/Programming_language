@@ -99,6 +99,12 @@ static void add_stream(OutputStream *ost, AVFormatContext *oc,
     AVCodecContext *c;
     int i;
 
+	/*
+	 * Find a registered encoder with a matching codec ID.
+	 *
+	 * @param id AVCodecID of the requested encoder
+	 * @return An encoder if one was found, NULL otherwise.
+	 */
     /* find the encoder */
     *codec = avcodec_find_encoder(codec_id);
     if (!(*codec)) {
@@ -113,6 +119,20 @@ static void add_stream(OutputStream *ost, AVFormatContext *oc,
         exit(1);
     }
     ost->st->id = oc->nb_streams-1;
+
+    /*
+	 * Allocate an AVCodecContext and set its fields to default values. The
+	 * resulting struct should be freed with avcodec_free_context().
+	 *
+	 * @param codec if non-NULL, allocate private data and initialize defaults
+	 *		for the given codec. It is illegal to then call avcodec_open2()
+	 *      with a different codec.
+	 *      If NULL, then the codec-specific defaults won't be initialized,
+	 *      which may result in suboptimal default settings (this is
+	 *      important mainly for encoders, e.g. libx264).
+	 * 
+	 * @return An AVCodecContext filled with default values or NULL on failure.
+	 */
     c = avcodec_alloc_context3(*codec);
     if (!c) {
         fprintf(stderr, "Could not alloc an encoding context\n");
