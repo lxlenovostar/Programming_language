@@ -113,6 +113,7 @@ static void add_stream(OutputStream *ost, AVFormatContext *oc,
         exit(1);
     }
 
+	// 申请AVStream
     ost->st = avformat_new_stream(oc, NULL);
     if (!ost->st) {
         fprintf(stderr, "Could not allocate stream\n");
@@ -120,6 +121,7 @@ static void add_stream(OutputStream *ost, AVFormatContext *oc,
     }
     ost->st->id = oc->nb_streams-1;
 
+	// 申请一个AVCodecContext
     /*
 	 * Allocate an AVCodecContext and set its fields to default values. The
 	 * resulting struct should be freed with avcodec_free_context().
@@ -397,6 +399,7 @@ static AVFrame *alloc_picture(enum AVPixelFormat pix_fmt, int width, int height)
     AVFrame *picture;
     int ret;
 
+	// 申请帧结构 AVFrame
     picture = av_frame_alloc();
     if (!picture)
         return NULL;
@@ -423,6 +426,7 @@ static void open_video(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
 
     av_dict_copy(&opt, opt_arg, 0);
 
+	// 打开解码器
     /* open the codec */
     ret = avcodec_open2(c, codec, &opt);
     av_dict_free(&opt);
@@ -450,6 +454,7 @@ static void open_video(AVFormatContext *oc, AVCodec *codec, OutputStream *ost, A
         }
     }
 
+	// 同步 AVCodecParameters
     /* copy the stream parameters to the muxer */
     ret = avcodec_parameters_from_context(ost->st->codecpar, c);
     if (ret < 0) {
@@ -603,6 +608,7 @@ int main(int argc, char **argv)
             av_dict_set(&opt, argv[i]+1, argv[i+1], 0);
     }
 
+	// 打开文件并与AVFormatContext建立关联
     /* allocate the output media context */
     avformat_alloc_output_context2(&oc, NULL, NULL, filename);
     if (!oc) {
@@ -639,6 +645,20 @@ int main(int argc, char **argv)
 
     /* open the output file, if needed */
     if (!(fmt->flags & AVFMT_NOFILE)) {
+		/*
+		 * Create and initialize a AVIOContext for accessing the
+		 * resource indicated by url.
+		 * @note When the resource indicated by url has been opened in
+		 * read+write mode, the AVIOContext can be used only for writing.
+		 *
+		 * @param s Used to return the pointer to the created AVIOContext.
+		 * In case of failure the pointed to value is set to NULL.
+		 * @param url resource to access
+		 * @param flags flags which control how the resource indicated by url
+		 * is to be opened
+		 * @return >= 0 in case of success, a negative value corresponding to an
+		 * AVERROR code in case of failure
+		 */
         ret = avio_open(&oc->pb, filename, AVIO_FLAG_WRITE);
         if (ret < 0) {
             fprintf(stderr, "Could not open '%s': %s\n", filename,
