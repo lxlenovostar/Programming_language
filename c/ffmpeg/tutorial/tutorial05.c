@@ -282,6 +282,7 @@ int audio_decode_frame(VideoState *is, double *pts_ptr) {
       }
       pts = is->audio_clock;
       *pts_ptr = pts;
+	  // TODO why use 2, not use is->audio_st->codec->sample_fmt
       n = 2 * is->audio_st->codec->channels;
 	  // TODO 理解audio_clock的作用
       is->audio_clock += (double)data_size / (double)(n * is->audio_st->codec->sample_rate);
