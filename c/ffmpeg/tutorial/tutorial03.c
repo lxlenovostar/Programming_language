@@ -251,39 +251,43 @@ int audio_decode_frame(AVCodecContext *aCodecCtx, uint8_t *audio_buf, int buf_si
 // stream 是音频数据写入的缓冲区指针
 // len 是缓冲区的大小
 void audio_callback(void *userdata, Uint8 *stream, int len) {
+	AVCodecContext *aCodecCtx = (AVCodecContext *)userdata;
+	int len1, audio_size;
 
-  AVCodecContext *aCodecCtx = (AVCodecContext *)userdata;
-  int len1, audio_size;
+  	// audio_buf 的大小为1.5倍的音频帧的大小
+	// all is static
+  	static uint8_t audio_buf[(MAX_AUDIO_FRAME_SIZE * 3) / 2];
+  	static unsigned int audio_buf_size = 0;
+  	static unsigned int audio_buf_index = 0;
 
-  // audio_buf 的大小为1.5倍的音频帧的大小
-  static uint8_t audio_buf[(MAX_AUDIO_FRAME_SIZE * 3) / 2];
-  static unsigned int audio_buf_size = 0;
-  static unsigned int audio_buf_index = 0;
+	while(len > 0) {
+    	if(audio_buf_index >= audio_buf_size) {
+      		/* We have already sent all our data; get more */
+      		audio_size = audio_decode_frame(aCodecCtx, audio_buf, audio_buf_size);
 
-  while(len > 0) {
-    if(audio_buf_index >= audio_buf_size) {
-      /* We have already sent all our data; get more */
-      audio_size = audio_decode_frame(aCodecCtx, audio_buf, audio_buf_size);
+      		if(audio_size < 0) {
+				/* If error, output silence */
+				audio_buf_size = 1024; // arbitrary?
+				memset(audio_buf, 0, audio_buf_size);
+      		} else {
+				audio_buf_size = audio_size;
+      		}
 
-      if(audio_size < 0) {
-		/* If error, output silence */
-		audio_buf_size = 1024; // arbitrary?
-		memset(audio_buf, 0, audio_buf_size);
-      } else {
-		audio_buf_size = audio_size;
-      }
-      	audio_buf_index = 0;
-    }
+      		audio_buf_index = 0;
+    	}
 
-    len1 = audio_buf_size - audio_buf_index;
-    if(len1 > len)
-      len1 = len;
-    memcpy(stream, (uint8_t *)audio_buf + audio_buf_index, len1);
-    len -= len1;
-    stream += len1;
-    audio_buf_index += len1;
-  }
+    	len1 = audio_buf_size - audio_buf_index;
+
+    	if(len1 > len)
+      		len1 = len;
+
+    	memcpy(stream, (uint8_t *)audio_buf + audio_buf_index, len1);
+    	len -= len1;
+    	stream += len1;
+    	audio_buf_index += len1;
+	}
 }
+
 
 int main(int argc, char *argv[]) {
   AVFormatContext *pFormatCtx = NULL;
