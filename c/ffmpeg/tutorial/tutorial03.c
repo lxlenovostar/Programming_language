@@ -138,108 +138,58 @@ int audio_decode_frame(AVCodecContext *aCodecCtx, uint8_t *audio_buf, int buf_si
   int len1, data_size = 0;
 
   for(;;) {
-    while(audio_pkt_size > 0) {
-      int got_frame = 0;
-	  /*
-	   * int avcodec_decode_audio4(AVCodecContext *avctx,
-	   * AVFrame * 	frame,
-	   * int * 	got_frame_ptr,
-	   * const AVPacket * 	avpkt 
-	   * )	
-	   *
-	   * Decode the audio frame of size avpkt->size from avpkt->data into 
-	   * frame.
-	   *
-	   * Some decoders may support multiple frames in a single AVPacket. 
-	   * Such decoders would then just decode the first frame and the 
-	   * return value would be less than the packet size. In this case, 
-	   * avcodec_decode_audio4 has to be called again with an AVPacket 
-	   * containing the remaining data in order to decode the second frame, 
-	   * etc... Even if no frames are returned, the packet needs to be 
-	   * fed to the decoder with remaining data until it is completely 
-	   * consumed or an error occurs.
-	   *
-	   * Some decoders (those marked with AV_CODEC_CAP_DELAY) have a 
-	   * delay between input and output. This means that for some packets 
-	   * they will not immediately produce decoded output and need to be 
-	   * flushed at the end of decoding to get all the decoded data. 
-	   * Flushing is done by calling this function with packets with 
-	   * avpkt->data set to NULL and avpkt->size set to 0 until it stops 
-	   * returning samples. It is safe to flush even those decoders that 
-	   * are not marked with AV_CODEC_CAP_DELAY, then no samples will be 
-	   * returned.
-	   *
-	   * The AVCodecContext MUST have been opened with avcodec_open2() 
-	   * before packets may be fed to the decoder.
-	   * 
-	   * 		avctx	the codec context
-	   * [out]	frame	The AVFrame in which to store decoded audio samples. 
-	   * 				The decoder will allocate a buffer for the decoded 
-	   * 				frame by calling the AVCodecContext.get_buffer2() 
-	   * 				callback. When AVCodecContext.refcounted_frames is 
-	   * 				set to 1, the frame is reference counted and the 
-	   * 				returned reference belongs to the caller. The caller 
-	   * 				must release the frame using av_frame_unref() when 
-	   * 				the frame is no longer needed. The caller may safely 
-	   * 				write to the frame if av_frame_is_writable() returns 
-	   * 				1. When AVCodecContext.refcounted_frames is set to 
-	   * 				0, the returned reference belongs to the decoder and 
-	   * 				is valid only until the next call to this function 
-	   * 				or until closing or flushing the decoder. The caller 
-	   * 				may not write to it.
-	   * [out]	got_frame_ptr	Zero if no frame could be decoded, otherwise 
-	   * 						it is non-zero. Note that this field being 
-	   * 						set to zero does not mean that an error has 
-	   * 						occurred. For decoders with 
-	   * 						AV_CODEC_CAP_DELA set, no given decode call 
-	   * 						is guaranteed to produce a frame.
-	   * [in]	avpkt	The input AVPacket containing the input buffer. At 
-	   * 				least avpkt->data and avpkt->size should be set. 
-	   * 				Some decoders might also require additional fields 
-	   * 				to be set.
-	   * */
-	  // avcodec_decode_audio2() 的功能就像 avcodec_decode_video2()一样，
-	  // 唯一的区别是它的一个包里可能不止一个音频帧。
-      len1 = avcodec_decode_audio4(aCodecCtx, &frame, &got_frame, &pkt);
+  	while(audio_pkt_size > 0) {
+    	int got_frame = 0;
+	  	// avcodec_decode_audio2() 的功能就像 avcodec_decode_video2()一样，
+	  	// 唯一的区别是它的一个包里可能不止一个音频帧。
+      	len1 = avcodec_decode_audio4(aCodecCtx, &frame, &got_frame, &pkt);
 
-      if(len1 < 0) {
-		/* if error, skip frame */
-		audio_pkt_size = 0;
-		break;
-      }
+      	if(len1 < 0) {
+			/* if error, skip frame */
+			audio_pkt_size = 0;
+			break;
+      	}
 
-      audio_pkt_data += len1;
-      audio_pkt_size -= len1;
+      	audio_pkt_data += len1;
+      	audio_pkt_size -= len1;
 
-      if (got_frame)
-      {
-          data_size = 
-            av_samples_get_buffer_size
-            (
-                NULL, 
-                aCodecCtx->channels,
-                frame.nb_samples,
-                aCodecCtx->sample_fmt,
-                1
-            );
-          memcpy(audio_buf, frame.data[0], data_size);
-      }
-      if(data_size <= 0) {
+      	if (got_frame)
+      	{
+		  /*
+		   * Get the required buffer size for the given audio parameters.
+		   *
+		   * Parameters
+		   * [out]	linesize	calculated linesize, may be NULL
+		   * nb_channels		the number of channels
+		   * nb_samples			the number of samples in a single channel
+		   * sample_fmt			the sample format
+		   * align				buffer size alignment (0 = default, 1 = no alignment)
+		   *
+		   * Returns
+		   * 	required buffer size, or negative error code on failure
+		   * */
+			data_size = av_samples_get_buffer_size(NULL, aCodecCtx->channels, frame.nb_samples, aCodecCtx->sample_fmt, 1);
+          	memcpy(audio_buf, frame.data[0], data_size);
+      	}
+
+      	if(data_size <= 0) {
 			/* No data yet, get more frames */
 			continue;
-      }
-      /* We have data, return it and come back for more later */
-      return data_size;
+      	}
+
+      	/* We have data, return it and come back for more later */
+      	return data_size;
     }
+
     if(pkt.data)
-      av_free_packet(&pkt);
+		av_free_packet(&pkt);
 
     if(quit) {
-      return -1;
+		return -1;
     }
 
     if(packet_queue_get(&audioq, &pkt, 1) < 0) {
-      return -1;
+    	return -1;
     }
 
     audio_pkt_data = pkt.data;
