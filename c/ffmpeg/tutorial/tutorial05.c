@@ -646,6 +646,7 @@ double synchronize_video(VideoState *is, AVFrame *src_frame, double pts) {
   is->video_clock += frame_delay;
   return pts;
 }
+
 uint64_t global_video_pkt_pts = AV_NOPTS_VALUE;
 
 /* These are called whenever we allocate a frame
