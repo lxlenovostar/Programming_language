@@ -172,21 +172,25 @@ static int packet_queue_get(PacketQueue *q, AVPacket *pkt, int block)
   SDL_UnlockMutex(q->mutex);
   return ret;
 }
+
 double get_audio_clock(VideoState *is) {
-  double pts;
-  int hw_buf_size, bytes_per_sec, n;
+	double pts;
+  	int hw_buf_size, bytes_per_sec, n;
   
-  pts = is->audio_clock; /* maintained in the audio thread */
-  hw_buf_size = is->audio_buf_size - is->audio_buf_index;
-  bytes_per_sec = 0;
-  n = is->audio_st->codec->channels * 2;
-  if(is->audio_st) {
-    bytes_per_sec = is->audio_st->codec->sample_rate * n;
-  }
-  if(bytes_per_sec) {
-    pts -= (double)hw_buf_size / bytes_per_sec;
-  }
-  return pts;
+  	pts = is->audio_clock; /* maintained in the audio thread */
+  	hw_buf_size = is->audio_buf_size - is->audio_buf_index;
+  	bytes_per_sec = 0;
+  	n = is->audio_st->codec->channels * 2;
+
+  	if(is->audio_st) {
+    	bytes_per_sec = is->audio_st->codec->sample_rate * n;
+  	}
+  
+	if(bytes_per_sec) {
+    	pts -= (double)hw_buf_size / bytes_per_sec;
+  	}
+
+	return pts;
 }
 
 int audio_decode_frame(VideoState *is, double *pts_ptr) {
@@ -282,7 +286,7 @@ int audio_decode_frame(VideoState *is, double *pts_ptr) {
       }
       pts = is->audio_clock;
       *pts_ptr = pts;
-	  // TODO why use 2, not use is->audio_st->codec->sample_fmt
+	  // 2 is 2 bytes.
       n = 2 * is->audio_st->codec->channels;
 	  // TODO 理解audio_clock的作用
       is->audio_clock += (double)data_size / (double)(n * is->audio_st->codec->sample_rate);
@@ -329,32 +333,34 @@ int audio_decode_frame(VideoState *is, double *pts_ptr) {
 }
 
 void audio_callback(void *userdata, Uint8 *stream, int len) {
+	VideoState *is = (VideoState *)userdata;
+	int len1, audio_size;
+	double pts;
 
-  VideoState *is = (VideoState *)userdata;
-  int len1, audio_size;
-  double pts;
+	while(len > 0) {
+    	if(is->audio_buf_index >= is->audio_buf_size) {
+      		/* We have already sent all our data; get more */
+      		audio_size = audio_decode_frame(is, &pts);
 
-  while(len > 0) {
-    if(is->audio_buf_index >= is->audio_buf_size) {
-      /* We have already sent all our data; get more */
-      audio_size = audio_decode_frame(is, &pts);
-      if(audio_size < 0) {
-	/* If error, output silence */
-	is->audio_buf_size = 1024;
-	memset(is->audio_buf, 0, is->audio_buf_size);
-      } else {
-	is->audio_buf_size = audio_size;
-      }
-      is->audio_buf_index = 0;
-    }
-    len1 = is->audio_buf_size - is->audio_buf_index;
-    if(len1 > len)
-      len1 = len;
-    memcpy(stream, (uint8_t *)is->audio_buf + is->audio_buf_index, len1);
-    len -= len1;
-    stream += len1;
-    is->audio_buf_index += len1;
-  }
+      		if(audio_size < 0) {
+				/* If error, output silence */
+				is->audio_buf_size = 1024;
+				memset(is->audio_buf, 0, is->audio_buf_size);
+      		} else {
+				is->audio_buf_size = audio_size;
+      		}
+      	
+			is->audio_buf_index = 0;
+    	}
+
+    	len1 = is->audio_buf_size - is->audio_buf_index;
+    	if(len1 > len)
+      		len1 = len;
+    	memcpy(stream, (uint8_t *)is->audio_buf + is->audio_buf_index, len1);
+    	len -= len1;
+    	stream += len1;
+    	is->audio_buf_index += len1;
+  	}
 }
 
 static Uint32 sdl_refresh_timer_cb(Uint32 interval, void *opaque) {
@@ -415,68 +421,70 @@ void video_refresh_timer(void *userdata) {
   double actual_delay, delay, sync_threshold, ref_clock, diff;
   
   if(is->video_st) {
-    if(is->pictq_size == 0) {
-      schedule_refresh(is, 1);
+		if(is->pictq_size == 0) {
+      		schedule_refresh(is, 1);
     } else {
-      vp = &is->pictq[is->pictq_rindex];
+      	vp = &is->pictq[is->pictq_rindex];
 
-      delay = vp->pts - is->frame_last_pts; /* the pts from last time */
-      if(delay <= 0 || delay >= 1.0) {
-		/*
-		 * 保证现在的时间戳和上一个时间戳之间的delay是有意义，否则
-		 * 使用上次的延迟。
-		 * */
-		/* if incorrect delay, use previous one */
-		delay = is->frame_last_delay;
-      }
-      /* save for next time */
-      is->frame_last_delay = delay;
-      is->frame_last_pts = vp->pts;
+      	delay = vp->pts - is->frame_last_pts; /* the pts from last time */
+      
+		if(delay <= 0 || delay >= 1.0) {
+			/*
+		 	 * 保证现在的时间戳和上一个时间戳之间的delay是有意义，否则
+		     * 使用上次的延迟。
+		 	 **/
+			/* if incorrect delay, use previous one */
+			delay = is->frame_last_delay;
+      	}
 
-      /* update delay to sync to audio */
-      ref_clock = get_audio_clock(is);
-      diff = vp->pts - ref_clock;
+      	/* save for next time */
+      	is->frame_last_delay = delay;
+      	is->frame_last_pts = vp->pts;
 
-	  /*
-	   * ffplay使用0.01秒作为同步阀值
-	   * */
-      /* Skip or repeat the frame. Take delay into account
-	 FFPlay still doesn't "know if this is the best guess." */
-      sync_threshold = (delay > AV_SYNC_THRESHOLD) ? delay : AV_SYNC_THRESHOLD;
+      	/* update delay to sync to audio */
+      	ref_clock = get_audio_clock(is);
+      	diff = vp->pts - ref_clock;
 
-      if(fabs(diff) < AV_NOSYNC_THRESHOLD) {
-			if(diff <= -sync_threshold) {
+	  	/*
+	   	 * ffplay使用0.01秒作为同步阀值
+	     **/
+      	/* Skip or repeat the frame. Take delay into account
+	 	   FFPlay still doesn't "know if this is the best guess." */
+      	sync_threshold = (delay > AV_SYNC_THRESHOLD) ? delay : AV_SYNC_THRESHOLD;
+
+      	if( fabs(diff) < AV_NOSYNC_THRESHOLD ) {
+			if( diff <= -sync_threshold ) {
 	  			delay = 0;	//更快刷新
-			} else if(diff >= sync_threshold) {
+			} else if( diff >= sync_threshold ) {
 	  			delay = 2 * delay;
 			}
-      }
+      	}
 
-      is->frame_timer += delay;
+      	is->frame_timer += delay;
 
-	  // av_gettime(): Get the current time in microseconds.
-      /* computer the REAL delay */
-      actual_delay = is->frame_timer - (av_gettime() / 1000000.0);
+	  	// av_gettime(): Get the current time in microseconds.
+      	/* computer the REAL delay */
+      	actual_delay = is->frame_timer - (av_gettime() / 1000000.0);
 
-	  // 最小的刷新值设置为10毫秒
-      if(actual_delay < 0.010) {
-		/* Really it should skip the picture instead */
-		actual_delay = 0.010;
-      }
+	  	// 最小的刷新值设置为10毫秒
+      	if(actual_delay < 0.010) {
+			/* Really it should skip the picture instead */
+			actual_delay = 0.010;
+      	}
 
-      schedule_refresh(is, (int)(actual_delay * 1000 + 0.5));
-      /* show the picture! */
-      video_display(is);
+      	schedule_refresh(is, (int)(actual_delay * 1000 + 0.5));
+      	/* show the picture! */
+      	video_display(is);
       
-      /* update queue for next picture! */
-      if(++is->pictq_rindex == VIDEO_PICTURE_QUEUE_SIZE) {
-		is->pictq_rindex = 0;
-      }
+      	/* update queue for next picture! */
+      	if(++is->pictq_rindex == VIDEO_PICTURE_QUEUE_SIZE) {
+			is->pictq_rindex = 0;
+      	}
 
-      SDL_LockMutex(is->pictq_mutex);
-      is->pictq_size--;
-      SDL_CondSignal(is->pictq_cond);
-      SDL_UnlockMutex(is->pictq_mutex);
+      	SDL_LockMutex(is->pictq_mutex);
+      	is->pictq_size--;
+      	SDL_CondSignal(is->pictq_cond);
+      	SDL_UnlockMutex(is->pictq_mutex);
     }
   } else {
     schedule_refresh(is, 100);
