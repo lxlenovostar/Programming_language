@@ -19,9 +19,16 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
+#include <libavutil/timestamp.h>
+#include <libswresample/swresample.h>
 
 #include <SDL.h>
 #include <SDL_thread.h>
+
+//lix update
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
 
 #ifdef __MINGW32__
 #undef main /* Prevents SDL from overriding main() */
@@ -34,6 +41,9 @@
 
 // gcc -o tutorial03 tutorial03.c -lavutil -lavformat -lavcodec -lz -lavutil -lm -lpthread -lswresample -lswscale -lx264 -lx265  -llzma `sdl-config --cflags --libs`
 
+//swr
+int out_buffer_size; 
+SwrContext *        swr = NULL;
 
 typedef struct PacketQueue {
   AVPacketList *first_pkt, *last_pkt;
@@ -153,24 +163,14 @@ int audio_decode_frame(AVCodecContext *aCodecCtx, uint8_t *audio_buf, int buf_si
 
       	audio_pkt_data += len1;
       	audio_pkt_size -= len1;
+		data_size = 0;
 
       	if (got_frame)
       	{
-		  /*
-		   * Get the required buffer size for the given audio parameters.
-		   *
-		   * Parameters
-		   * [out]	linesize	calculated linesize, may be NULL
-		   * nb_channels		the number of channels
-		   * nb_samples			the number of samples in a single channel
-		   * sample_fmt			the sample format
-		   * align				buffer size alignment (0 = default, 1 = no alignment)
-		   *
-		   * Returns
-		   * 	required buffer size, or negative error code on failure
-		   * */
-			data_size = av_samples_get_buffer_size(NULL, aCodecCtx->channels, frame.nb_samples, aCodecCtx->sample_fmt, 1);
-          	memcpy(audio_buf, frame.data[0], data_size);
+			data_size = out_buffer_size;
+			printf ("data_size:%d\n", data_size);
+			printf("index:%5d\t pts:%lld\t packet size:%d\n",index,pkt.pts,pkt.size);
+            swr_convert(swr, &audio_buf, MAX_AUDIO_FRAME_SIZE, (const uint8_t**)frame.data, frame.nb_samples);
       	}
 
       	if(data_size <= 0) {
@@ -197,6 +197,24 @@ int audio_decode_frame(AVCodecContext *aCodecCtx, uint8_t *audio_buf, int buf_si
     audio_pkt_size = pkt.size;
   }
 }
+
+/*
+static uint64_t tmr_milliseconds(void)
+{
+	struct timeval now;
+	uint64_t ms;
+
+	if (0 != gettimeofday(&now, NULL)) {
+		printf("jiffies: gettimeofday() failed (%m)\n", errno);
+		return 0;
+	}
+
+	ms  = (uint64_t)now.tv_sec*1000;
+	ms += (uint64_t)now.tv_usec / (uint64_t)1000;
+
+	return ms;
+}
+*/
 
 // userdata是SDL的指针
 // stream 是音频数据写入的缓冲区指针
@@ -232,6 +250,9 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
     	if(len1 > len)
       		len1 = len;
 
+		//lix udpate
+		//write(fd, (uint8_t *)audio_buf + audio_buf_index, len1);
+
     	memcpy(stream, (uint8_t *)audio_buf + audio_buf_index, len1);
     	len -= len1;
     	stream += len1;
@@ -241,6 +262,7 @@ void audio_callback(void *userdata, Uint8 *stream, int len) {
 
 
 int main(int argc, char *argv[]) {
+	
   AVFormatContext *pFormatCtx = NULL;
   int             i, videoStream, audioStream;
   AVCodecContext  *pCodecCtx = NULL;
@@ -267,6 +289,7 @@ int main(int argc, char *argv[]) {
     fprintf(stderr, "Usage: test <file>\n");
     exit(1);
   }
+
   // Register all formats and codecs
   av_register_all();
   
@@ -305,6 +328,33 @@ int main(int argc, char *argv[]) {
     return -1;
    
   aCodecCtx=pFormatCtx->streams[audioStream]->codec;
+
+  // 打开音频编解码器本身
+  aCodec = avcodec_find_decoder(aCodecCtx->codec_id);
+  if(!aCodec) {
+    fprintf(stderr, "Unsupported codec!\n");
+    return -1;
+  }
+  avcodec_open2(aCodecCtx, aCodec, &audioOptionsDict);
+
+  //swr
+  //Out Audio Param
+  uint64_t out_channel_layout=AV_CH_LAYOUT_STEREO;
+  //nb_samples: AAC-1024 MP3-1152
+  int out_nb_samples=aCodecCtx->frame_size;
+  enum AVSampleFormat out_sample_fmt = AV_SAMPLE_FMT_S16;
+  int out_sample_rate=44100;
+  int out_channels=av_get_channel_layout_nb_channels(out_channel_layout);
+  //Out Buffer Size
+  out_buffer_size=av_samples_get_buffer_size(NULL,out_channels ,out_nb_samples, out_sample_fmt, 1); 
+
+
+  int64_t in_channel_layout = av_get_default_channel_layout(aCodecCtx->channels);
+  swr = swr_alloc();
+  swr = swr_alloc_set_opts(swr,out_channel_layout, out_sample_fmt, out_sample_rate,
+				  		in_channel_layout, aCodecCtx->sample_fmt , aCodecCtx->sample_rate,0, NULL);
+  swr_init(swr);
+
   // Set audio settings from codec info
   // 包含在编解码上下文中的所有信息正是我们所需要的用来建立音频的信息。
   // 设置采样率
@@ -312,6 +362,7 @@ int main(int argc, char *argv[]) {
   // 告诉SDL我们将要给的格式。"S16SYS"中的S表示有符号的signed，16表示
   // 每个样本是16位长的，SYS表示大小端的顺序是与使用的系统相同的。这些
   // 格式是由avcodec_decode_audio2为我们给出来的输入音频的格式。
+  //wanted_spec.format = AUDIO_S16SYS;
   wanted_spec.format = AUDIO_S16SYS;
   // 音频的通道数
   wanted_spec.channels = aCodecCtx->channels;
@@ -329,14 +380,7 @@ int main(int argc, char *argv[]) {
   if(SDL_OpenAudio(&wanted_spec, &spec) < 0) {
     fprintf(stderr, "SDL_OpenAudio: %s\n", SDL_GetError());
     return -1;
-  }
-  // 打开音频编解码器本身
-  aCodec = avcodec_find_decoder(aCodecCtx->codec_id);
-  if(!aCodec) {
-    fprintf(stderr, "Unsupported codec!\n");
-    return -1;
-  }
-  avcodec_open2(aCodecCtx, aCodec, &audioOptionsDict);
+  } 
 
   // audio_st = pFormatCtx->streams[index]
   packet_queue_init(&audioq);
@@ -344,6 +388,7 @@ int main(int argc, char *argv[]) {
   //此函数让音频设备最终开始工作，如果没有立即提供
   //足够的数据，它会播放静音。
   SDL_PauseAudio(0);
+
 
   // Get a pointer to the codec context for the video stream
   pCodecCtx=pFormatCtx->streams[videoStream]->codec;
@@ -392,7 +437,6 @@ int main(int argc, char *argv[]) {
         NULL,
         NULL
     );
-
 
   // Read frames and save first five frames to disk
   i=0;
@@ -457,6 +501,9 @@ int main(int argc, char *argv[]) {
     }
 
   }
+
+  // Free swr
+  swr_free(&swr);
 
   // Free the YUV frame
   av_free(pFrame);
