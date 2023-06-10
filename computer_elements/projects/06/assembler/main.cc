@@ -3,9 +3,11 @@
 #include <memory>
 #include <vector>
 #include <bitset>
+#include <cctype>
 
 #include "parser.h"
 #include "code.h"
+#include "symboltable.h"
 
 /*
     @2
@@ -27,6 +29,15 @@
     3. 支持符号
 */
 
+bool is_all_digits(const std::string& str) {
+    for (char c : str) {
+        if (!std::isdigit(c)) { // 判断字符是否为数字
+            return false;
+        }
+    }
+    return true;
+}
+
 void write_file(const std::vector<std::string> & ret, const std::string& filename) {
     std::ofstream outfile(filename); // 打开文件
 
@@ -42,11 +53,28 @@ void write_file(const std::vector<std::string> & ret, const std::string& filenam
 }
 
 int main() {
-    //std::shared_ptr<Parser> assembler_parser = std::make_shared<Parser>("../add/Add.asm");
+    /* 第一阶段处理符号 */
+    const std::string filename("../add/Add.asm");
+    std::shared_ptr<Parser> pre_parser = std::make_shared<Parser>(filename);
+    std::shared_ptr<Symboltable> symbol_table = std::make_shared<Symboltable>();
+  
     //std::shared_ptr<Parser> assembler_parser = std::make_shared<Parser>("../max/MaxL.asm");
     //std::shared_ptr<Parser> assembler_parser = std::make_shared<Parser>("../rect/RectL.asm");
-    std::shared_ptr<Parser> assembler_parser = std::make_shared<Parser>("../pong/PongL.asm");
-    
+    //std::shared_ptr<Parser> assembler_parser = std::make_shared<Parser>("../pong/PongL.asm");
+
+    while (pre_parser->hasMoreCommands()) {
+        pre_parser->advance();
+
+        Parser::command_type ret_type = pre_parser->commandType();
+        if (ret_type == Parser::L_COMMAND) {
+            auto curr_command = pre_parser->symbol(); 
+            std::cout << "pre: " << curr_command << std::endl;        
+
+            symbol_table->addEntry(curr_command, pre_parser->get_pos());
+        } 
+    }
+   
+    std::shared_ptr<Parser> assembler_parser = std::make_shared<Parser>(filename);
     std::shared_ptr<Code> assembler_coder = std::make_shared<Code>();
 
     std::vector<std::string> ret_binary;
@@ -57,6 +85,18 @@ int main() {
         if (ret_type == Parser::A_COMMAND) {
                 auto curr_command = assembler_parser->symbol(); 
                 std::cout << curr_command << std::endl;
+
+                std::string a_command;
+                // TODO
+                if (symbol_table->contains(curr_command)) {
+                    /* 确认是不是跳转标签 */
+                    a_command = symbol_table->GetAddress(curr_command);
+                } else if () {
+                    /* 如果数字，那么整数转二进制 */
+                } else {
+                    /* 变量的情况， 如果没有在符号表，从16开始存放变量，否则直接用变量。 */
+                }
+
                 std::bitset<15> binary(std::stoi(curr_command));
                 auto ret_string = "0" + binary.to_string();
                 std::cout << ret_string << std::endl;
@@ -64,6 +104,8 @@ int main() {
         } else if (ret_type == Parser::L_COMMAND) {
                 auto curr_command = assembler_parser->symbol(); 
                 std::cout << curr_command << std::endl;        
+                /* 跳转的标签换成整数 */
+                auto l_command = symbol_table->GetAddress(curr_command);
                 std::bitset<15> binary(std::stoi(curr_command));
                 auto ret_string = "0" + binary.to_string();
                 std::cout << ret_string << std::endl;
