@@ -4,7 +4,7 @@
 
 #include "parser.h"
 
-Parser::Parser(const std::string& filename): m_pos(0), m_curr_line(""), m_assembler_file(filename), m_curr_dest(""),
+Parser::Parser(const std::string& filename): m_pos(0), m_rom_pos(0), m_curr_line(""), m_assembler_file(filename), m_curr_dest(""),
      m_curr_comp(""), m_curr_jump(""), m_type(NULL_COMMAND) {
     if (!m_assembler_file.is_open()) {
         std::cout << "can't open file: " << filename << std::endl;
@@ -21,12 +21,13 @@ void Parser::preHandleFile() {
        tmp_line.erase(std::remove_if(tmp_line.begin(), tmp_line.end(),
             [](char c) { return std::isspace(c); }), tmp_line.end());
         
-        if (tmp_line.find("//") != std::string::npos || tmp_line.size() == 0) {
+        // TODO 处理尾部注释
+        if ((tmp_line.find("//") != std::string::npos) || tmp_line.size() == 0) {
             // 去掉注释
             continue;
         }
 
-        std::cout << "debug:" << tmp_line << std::endl;
+        std::cout << "debug source line:" << tmp_line << std::endl;
 
         m_command.emplace_back(tmp_line);
     }
@@ -55,6 +56,7 @@ void Parser::advance() {
             case '@':
                 std::cout << "debug A\n";
                 m_type = A_COMMAND;
+                ++m_rom_pos;
                 break;
             case '(':
                 std::cout << "debug L\n";
@@ -63,6 +65,7 @@ void Parser::advance() {
             default:
                 std::cout << "debug C\n";
                 m_type = C_COMMAND;
+                ++m_rom_pos;
                 handleCCommand();
                 break;
         }

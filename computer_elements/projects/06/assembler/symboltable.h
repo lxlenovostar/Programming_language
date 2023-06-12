@@ -7,8 +7,8 @@
 class Symboltable
 {
 public:
-    Symboltable() {
-        m_symboltable["sp"] = "0";
+    Symboltable(): m_value_pos(16) {
+        m_symboltable["SP"] = "0";
         m_symboltable["LCL"] = "1";
         m_symboltable["ARG"] = "2";
         m_symboltable["THIS"] = "3";
@@ -37,10 +37,13 @@ public:
     virtual ~Symboltable();
     void addEntry(const std::string& symbol, int address);
     bool contains(const std::string& symbol);
-    int GetAddress(const std::string& symbol);
+    std::string GetAddress(const std::string& symbol);
+    int GetValuePos() { return m_value_pos; }
+    void AddValuePos() { ++m_value_pos; }
 
 private:
     std::map<std::string, std::string> m_symboltable;
+    int m_value_pos;
 };
 
 #endif 

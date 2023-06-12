@@ -24,10 +24,11 @@ class Parser {
         std::string comp();
         std::string jump();
 
-        inline int get_pos() { return m_pos; }
+        inline int get_pos() { return m_rom_pos; }
 
     private:
         int m_pos;
+        int m_rom_pos;
         std::string m_curr_line;
         std::ifstream m_assembler_file;
         // TODO 以下三个变量换成 结构体
