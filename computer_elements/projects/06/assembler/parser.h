@@ -24,6 +24,8 @@ class Parser {
         std::string comp();
         std::string jump();
 
+        inline int get_pos() { return m_pos; }
+
     private:
         int m_pos;
         std::string m_curr_line;

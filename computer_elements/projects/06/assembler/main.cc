@@ -87,12 +87,12 @@ int main() {
                 std::cout << curr_command << std::endl;
 
                 std::string a_command;
-                // TODO
+                /* 确认是不是跳转标签 */
                 if (symbol_table->contains(curr_command)) {
-                    /* 确认是不是跳转标签 */
                     a_command = symbol_table->GetAddress(curr_command);
-                } else if () {
+                } else if (is_all_digits(curr_command)) {
                     /* 如果数字，那么整数转二进制 */
+                    a_command = curr_command;
                 } else {
                     /* 变量的情况， 如果没有在符号表，从16开始存放变量，否则直接用变量。 */
                 }
