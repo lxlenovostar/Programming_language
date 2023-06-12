@@ -88,19 +88,15 @@ int main(int argc, char** argv) {
                 std::string a_command;
                 if (symbol_table->contains(curr_command)) {
                     a_command = symbol_table->GetAddress(curr_command);
-                    std::cout << "debug1 error a_command " << a_command  << " curr_command:" << curr_command << std::endl;
                 } else if (is_all_digits(curr_command)) {
                     /* 如果数字，那么整数转二进制 */
                     a_command = curr_command;
-                    std::cout << "debug2 error a_command " << a_command  << " curr_command:" << curr_command << std::endl;
                 } else {
                     /* 变量的情况， 如果没有在符号表，从16开始存放变量，否则直接用变量。 */
                     symbol_table->addEntry(curr_command, symbol_table->GetValuePos());    
                     symbol_table->AddValuePos();
                     a_command = symbol_table->GetAddress(curr_command);
-                    std::cout << "debug3 error a_command " << a_command  << " curr_command:" << curr_command << std::endl;
                 }
-                std::cout << "debug error a_command " << a_command << std::endl;
                 std::bitset<15> binary(std::stoi(a_command));
                 auto ret_string = "0" + binary.to_string();
                 std::cout << ret_string << std::endl;

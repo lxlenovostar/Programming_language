@@ -27,8 +27,6 @@ void Parser::preHandleFile() {
             continue;
         }
 
-        std::cout << "debug source line:" << tmp_line << std::endl;
-
         m_command.emplace_back(tmp_line);
     }
 }
@@ -54,16 +52,13 @@ void Parser::advance() {
         
         switch (m_curr_line[0]) {
             case '@':
-                std::cout << "debug A\n";
                 m_type = A_COMMAND;
                 ++m_rom_pos;
                 break;
             case '(':
-                std::cout << "debug L\n";
                 m_type = L_COMMAND;
                 break;
             default:
-                std::cout << "debug C\n";
                 m_type = C_COMMAND;
                 ++m_rom_pos;
                 handleCCommand();
@@ -84,33 +79,28 @@ void Parser::handleCCommand() {
         // 取 dest 
         size_t pos_len = pos1;
         m_curr_dest = m_curr_line.substr(0, pos_len);
-        std::cout << "debug dest:" << m_curr_dest << std::endl;
     }
 
     if (pos2 != std::string::npos) {
         // 取 jump 
         size_t pos_len = m_curr_line.size() - pos2 - 1;
         m_curr_jump = m_curr_line.substr(pos2 + 1, pos_len);
-        std::cout << "debug jump:" << m_curr_jump << std::endl;
     }
     
     // C 指令一定有comp , 取 comp 
     pos1 = pos1 == std::string::npos ? 0 : pos1 + 1;
     pos2 = pos2 == std::string::npos ? m_curr_line.size() - 1 : pos2 - 1;
     m_curr_comp = m_curr_line.substr(pos1, (pos2 - pos1 + 1));
-    std::cout << "debug comp:" << m_curr_comp << std::endl;
 }
 
 std::string Parser::symbol() {
     if (m_type == A_COMMAND) {
         // -1 代表去掉 @
-        std::cout << "debug a:" << m_curr_line.substr(1, m_curr_line.size() - 1) << std::endl;
         return m_curr_line.substr(1, m_curr_line.size() - 1);
     }
 
     if (m_type == L_COMMAND) {
         // -2 代表去掉  ()
-        std::cout << "debug a:" << m_curr_line.substr(1, m_curr_line.size() - 2) << std::endl;
         return m_curr_line.substr(1, m_curr_line.size() - 2);
     }
     

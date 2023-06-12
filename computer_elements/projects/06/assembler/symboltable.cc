@@ -16,7 +16,5 @@ bool Symboltable::contains(const std::string& symbol) {
 }
 
 std::string Symboltable::GetAddress(const std::string& symbol) {
-    // TODO check
-    //std::cout << "debug: " << symbol << " address: " << m_symboltable.at(symbol) << std::endl;
     return m_symboltable.at(symbol);
 }
