@@ -75,11 +75,86 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          */
         ret_command = getStackValue() + subStackTop() + std::string("@SP\nA=M-1\nM=M+D\n"); 
 
+    } else if (command == "sub") {
+        /*
+         sub 
+
+         @SP
+         A=M-1    // 地址暂时存在A
+         D=M      // 取栈顶元素
+
+         @SP
+         M=M-1    // SP--
+
+         @SP
+         A=M-1
+         M=M-D
+         */
+        ret_command = getStackValue() + subStackTop() + std::string("@SP\nA=M-1\nM=M-D\n"); 
+    } else if (command == "neg") {
+        /*
+         neg 
+
+         @SP
+         A=M-1
+         M=-M
+         */
+        ret_command = std::string("@SP\nA=M-1\nM=-M\n"); 
+    } else if (command == "not") {
+        /*
+         neg 
+
+         @SP
+         A=M-1
+         M=!M
+         */
+        ret_command = std::string("@SP\nA=M-1\nM=!M\n"); 
+    } else if (command == "and") {        
+        /*
+         and 
+
+         @SP
+         A=M-1    // 地址暂时存在A
+         D=M      // 取栈顶元素
+
+         @SP
+         M=M-1    // SP--
+
+         @SP
+         A=M-1
+         M=M&D
+         */
+        ret_command = getStackValue() + subStackTop() + std::string("@SP\nA=M-1\nM=M&D\n"); 
+    } else if (command == "or") {        
+        /*
+         or 
+
+         @SP
+         A=M-1    // 地址暂时存在A
+         D=M      // 取栈顶元素
+
+         @SP
+         M=M-1    // SP--
+
+         @SP
+         A=M-1
+         M=M|D
+         */
+        ret_command = getStackValue() + subStackTop() + std::string("@SP\nA=M-1\nM=M|D\n"); 
     } else if (command == "eq" || command == "lt" || command == "gt") {
         m_index++;
+        std::string inner_command;
+
+        if (command == "eq") {
+            inner_command = "JEQ";
+        } else if (command == "lt") {
+            inner_command = "JLT";
+        } else {
+            inner_command = "JGT";
+        }
 
         /*
-         eq 
+         eq/lt/gt 
 
          @SP
          A=M-1    // 地址暂时存在A
@@ -104,7 +179,11 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          M=-1
          (END)
          */
- 
+        
+        std::string str_index = std::to_string(m_index); 
+        ret_command = getStackValue() + subStackTop() + std::string("@SP\nA=M-1\nD=M-D\n@TRUE") 
+            + str_index + "\nD;" + inner_command + "\n@SP\nA=M-1\nM=0\n@END" + str_index 
+            + "\n0;JMP\n(TRUE" + str_index + ")\n@SP\nA=M-1\nM=-1\n(END" + str_index + ")\n"; 
     }
 
     writeFile(ret_command);
