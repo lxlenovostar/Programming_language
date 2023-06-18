@@ -20,6 +20,8 @@ int main(int argc, char** argv) {
         Parser::command_type ret_type = parser->commandType();
         if (ret_type == Parser::C_PUSH) {
             codewriter->writePushPop("push", parser->arg1(), parser->arg2());
+        } else if (ret_type == Parser::C_POP) {
+            codewriter->writePushPop("pop", parser->arg1(), parser->arg2());
         } else if (ret_type == Parser::C_ARITHMETIC) {
             codewriter->writeArithmetic(parser->arg1());
         } 
