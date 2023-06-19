@@ -100,6 +100,7 @@ void CodeWriter::writePushPop(const std::string& command,
              pop local 0
 
              // local 0 的地址存放在 R13 
+             // R13 存的是地址
 
              #@LCL
              #D=M        // 段地址
@@ -180,6 +181,7 @@ void CodeWriter::writePushPop(const std::string& command,
 
     }
 
+    std::cout << "debug: " << ret_command;
     writeFile(ret_command);
 
 
@@ -197,12 +199,20 @@ void CodeWriter::writeArithmetic(const std::string& command) {
 
          @SP
          M=M-1    // SP--
-
+         
          @SP
          A=M-1
          M=M+D
+
+         // 方法2
+         @SP
+         AM=M-1
+         D=M
+         A=A-1
+         M=M+D
+
          */
-        ret_command = getStackValue() + subStackTop() + std::string("@SP\nA=M-1\nM=M+D\n"); 
+        ret_command = getStackValue2() + std::string("M=M+D\n"); 
 
     } else if (command == "sub") {
         /*
@@ -219,7 +229,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          A=M-1
          M=M-D
          */
-        ret_command = getStackValue() + subStackTop() + std::string("@SP\nA=M-1\nM=M-D\n"); 
+        ret_command = getStackValue2() + std::string("M=M-D\n"); 
     } else if (command == "neg") {
         /*
          neg 
@@ -253,7 +263,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          A=M-1
          M=M&D
          */
-        ret_command = getStackValue() + subStackTop() + std::string("@SP\nA=M-1\nM=M&D\n"); 
+        ret_command = getStackValue2() + std::string("M=M&D\n"); 
     } else if (command == "or") {        
         /*
          or 
@@ -269,7 +279,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          A=M-1
          M=M|D
          */
-        ret_command = getStackValue() + subStackTop() + std::string("@SP\nA=M-1\nM=M|D\n"); 
+        ret_command = getStackValue2() + std::string("M=M|D\n"); 
     } else if (command == "eq" || command == "lt" || command == "gt") {
         m_index++;
         std::string inner_command;
@@ -310,10 +320,12 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          */
         
         std::string str_index = std::to_string(m_index); 
-        ret_command = getStackValue() + subStackTop() + std::string("@SP\nA=M-1\nD=M-D\n@TRUE") 
+        ret_command = getStackValue2() + std::string("@SP\nA=M-1\nD=M-D\n@TRUE") 
             + str_index + "\nD;" + inner_command + "\n@SP\nA=M-1\nM=0\n@END" + str_index 
             + "\n0;JMP\n(TRUE" + str_index + ")\n@SP\nA=M-1\nM=-1\n(END" + str_index + ")\n"; 
     }
+
+    std::cout << "debug " << ret_command << std::endl;
 
     writeFile(ret_command);
 }

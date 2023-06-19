@@ -16,69 +16,73 @@ class CodeWriter {
         void writeFile(const std::string& command); 
 
         std::string pushConstant(int value) {
-            return setValue(value) + setStackValue() + addStackTop();
+            return setValueContent(value) + setStackValue() + addStackTop();
         }
 
-        std::string setValue(int value) {
+        std::string setValueContent(int value) {
             return "@" + std::to_string(value) + "\nD=A\n";
         }
         
+        std::string setValueValue(int value) {
+            return "@" + std::to_string(value) + "\nD=D+A\n";
+        }
+        
+        std::string setValueAddress(int value) {
+            return "@" + std::to_string(value) + "\nA=D+A\nD=M\n";
+        }
+        
         std::string pushLocal(int value) {
-            return setValue(value) + getLocalValue() + setStackValue() + addStackTop();
+            return getLocalValue() + setValueAddress(value) + setStackValue() + addStackTop();
         }
         
         std::string getLocalValue() {
-            return "@LCL\nA=M+D\nD=M\n";
+            return "@LCL\nD=M\n";
         }
         
         std::string pushThis(int value) {
-            return setValue(value) + getThisValue() + setStackValue() + addStackTop();
+            return getThisValue() + setValueAddress(value) + setStackValue() + addStackTop();
         }
         
         std::string getThisValue() {
-            return "@THIS\nA=M+D\nD=M\n";
+            return "@THIS\nD=M\n";
         }
  
         std::string pushThat(int value) {
-            return setValue(value) + getThatValue() + setStackValue() + addStackTop();
+            return getThatValue() + setValueAddress(value) + setStackValue() + addStackTop();
         }
         
         std::string getThatValue() {
-            return "@THAT\nA=M+D\nD=M\n";
+            return "@THAT\nD=M\n";
         }
  
         std::string pushArgument(int value) {
-            return setValue(value) + getArgumentValue() + setStackValue() + addStackTop();
+            return getArgumentValue() + setValueAddress(value) + setStackValue() + addStackTop();
         }
         
         std::string getArgumentValue() {
-            return "@ARG\nA=M+D\nD=M\n";
+            return "@ARG\nD=M\n";
         }
         
         std::string pushTemp(int value) {
-            return setValue(value) + getTempValue() + setStackValue() + addStackTop();
+            return getTempValue() + setValueAddress(value) + setStackValue() + addStackTop();
         }
         
         std::string getTempValue() {
-            return "@5\nA=A+D\nD=M\n";
+            return "@R5\nD=A\n";
         }
         
         std::string setStackValue() {
             return "@SP\nA=M\nM=D\n";
         }
         
-        std::string getStackValue() {
-            return "@SP\nA=M-1\nD=M\n";
+        std::string getStackValue2() {
+            return "@SP\nAM=M-1\nD=M\nA=A-1\n";
         }
         
         std::string addStackTop() {
             return "@SP\nM=M+1\n";
         }
   
-        std::string subStackTop() {
-            return "@SP\nM=M-1\n";
-        }
-
         std::string getStackValueAndSubStackTop() {
             return "@SP\nAM=M-1\nD=M\n";
         }
@@ -96,35 +100,35 @@ class CodeWriter {
         }
 
         std::string popLocal(int value) {
-            return setValue(value) + getLocalValue() +
+            return getLocalValue() + setValueValue(value) + 
                 setValueToR13() + getStackValueAndSubStackTop() +
                 getValueToR13();
         }
  
         std::string popThis(int value) {
-            return setValue(value) + getThisValue() +
+            return getThisValue() + setValueValue(value) + 
                 setValueToR13() + getStackValueAndSubStackTop() +
                 getValueToR13();
         }
   
         std::string popThat(int value) {
-            return setValue(value) + getThatValue() +
+            return getThatValue() + setValueValue(value) + 
                 setValueToR13() + getStackValueAndSubStackTop() +
                 getValueToR13();
         }
  
         std::string popArgument(int value) {
-            return setValue(value) + getArgumentValue() +
+            return getArgumentValue() + setValueValue(value) + 
                 setValueToR13() + getStackValueAndSubStackTop() +
                 getValueToR13();
         }
         
         std::string getTempAddress() {
-            return "@5\nA=A+D\nD=A\n";
+            return "@R5\nD=A\n";
         }
 
         std::string popTemp(int value) {
-            return setValue(value) + getTempAddress() +
+            return getTempAddress() + setValueValue(value) + 
                 setValueToR13() + getStackValueAndSubStackTop() +
                 getValueToR13();
         }
