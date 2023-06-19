@@ -46,13 +46,26 @@ class CodeWriter {
         std::string getThisValue() {
             return "@THIS\nD=M\n";
         }
+        
+        std::string getThisAdress() {
+            return "@THIS\nD=A\n";
+        }
  
         std::string pushThat(int value) {
             return getThatValue() + setValueAddress(value) + setStackValue() + addStackTop();
         }
+
+        std::string pushPointer(int value) {
+            const std::string& begin = value == 0 ? getThisValue() : getThatValue();
+            return begin + setStackValue() + addStackTop();
+        }
         
         std::string getThatValue() {
             return "@THAT\nD=M\n";
+        }
+        
+        std::string getThatAddress() {
+            return "@THAT\nD=A\n";
         }
  
         std::string pushArgument(int value) {
@@ -75,7 +88,7 @@ class CodeWriter {
             return "@SP\nA=M\nM=D\n";
         }
         
-        std::string getStackValue2() {
+        std::string getStackValue() {
             return "@SP\nAM=M-1\nD=M\nA=A-1\n";
         }
         
@@ -114,6 +127,12 @@ class CodeWriter {
         std::string popThat(int value) {
             return getThatValue() + setValueValue(value) + 
                 setValueToR13() + getStackValueAndSubStackTop() +
+                getValueToR13();
+        }
+        
+        std::string popPointer(int value) {
+            const std::string& begin = value == 0 ? getThisAdress() : getThatAddress();
+            return begin + setValueToR13() + getStackValueAndSubStackTop() +
                 getValueToR13();
         }
  

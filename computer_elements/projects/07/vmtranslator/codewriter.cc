@@ -93,6 +93,8 @@ void CodeWriter::writePushPop(const std::string& command,
             ret_command = pushTemp(index); 
         } else if (segment == "argument") {
             ret_command = pushArgument(index); 
+        } else if (segment == "pointer") {
+            ret_command = pushPointer(index); 
         }
     } else if (command == "pop") {
         if (segment == "local") {
@@ -176,6 +178,8 @@ void CodeWriter::writePushPop(const std::string& command,
              M=D
              */
             ret_command = popTemp(index); 
+        } else if (segment == "pointer") {
+            ret_command = popPointer(index); 
         }
 
 
@@ -212,7 +216,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          M=M+D
 
          */
-        ret_command = getStackValue2() + std::string("M=M+D\n"); 
+        ret_command = getStackValue() + std::string("M=M+D\n"); 
 
     } else if (command == "sub") {
         /*
@@ -229,7 +233,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          A=M-1
          M=M-D
          */
-        ret_command = getStackValue2() + std::string("M=M-D\n"); 
+        ret_command = getStackValue() + std::string("M=M-D\n"); 
     } else if (command == "neg") {
         /*
          neg 
@@ -263,7 +267,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          A=M-1
          M=M&D
          */
-        ret_command = getStackValue2() + std::string("M=M&D\n"); 
+        ret_command = getStackValue() + std::string("M=M&D\n"); 
     } else if (command == "or") {        
         /*
          or 
@@ -279,7 +283,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          A=M-1
          M=M|D
          */
-        ret_command = getStackValue2() + std::string("M=M|D\n"); 
+        ret_command = getStackValue() + std::string("M=M|D\n"); 
     } else if (command == "eq" || command == "lt" || command == "gt") {
         m_index++;
         std::string inner_command;
@@ -320,7 +324,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          */
         
         std::string str_index = std::to_string(m_index); 
-        ret_command = getStackValue2() + std::string("@SP\nA=M-1\nD=M-D\n@TRUE") 
+        ret_command = getStackValue() + std::string("@SP\nA=M-1\nD=M-D\n@TRUE") 
             + str_index + "\nD;" + inner_command + "\n@SP\nA=M-1\nM=0\n@END" + str_index 
             + "\n0;JMP\n(TRUE" + str_index + ")\n@SP\nA=M-1\nM=-1\n(END" + str_index + ")\n"; 
     }
