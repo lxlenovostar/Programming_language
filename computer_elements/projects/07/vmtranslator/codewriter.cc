@@ -3,13 +3,16 @@
 #include <string>
 #include <vector>
 
-#include "codewriter.h"
+#include "utils.h"
 #include "parser.h"
+#include "codewriter.h"
 
 CodeWriter::CodeWriter(const std::string& filename): m_file(filename), m_index(0) {
     if (!m_file.is_open()) {
         std::cout << "can't open file: " << filename << std::endl;
     } 
+
+    m_file_name = get_filename(filename);
 }
 
 CodeWriter::~CodeWriter() {
@@ -95,6 +98,21 @@ void CodeWriter::writePushPop(const std::string& command,
             ret_command = pushArgument(index); 
         } else if (segment == "pointer") {
             ret_command = pushPointer(index); 
+        } else if (segment == "static") {
+            /*
+            push static 3
+
+            @StaticTest.3
+            D=M
+            
+            @SP
+            A=M   // 取得了SP中的地址
+            M=D   // SP中的value起作用
+
+            @SP
+            M=M+1
+            */
+           ret_command = pushStatic(index);
         }
     } else if (command == "pop") {
         if (segment == "local") {
@@ -180,6 +198,18 @@ void CodeWriter::writePushPop(const std::string& command,
             ret_command = popTemp(index); 
         } else if (segment == "pointer") {
             ret_command = popPointer(index); 
+        } else if (segment == "static") {
+            /*
+             pop static 1 
+
+             @SP
+             AM=M-1    // SP--
+             D=M       // 取栈顶元素
+
+             @StaticTest.3
+             M=D
+             */
+            ret_command = popStatic(index); 
         }
 
 

@@ -3,4 +3,4 @@ project(Proj7)
 
 set(CMAKE_CXX_STANDARD 20)
 
-add_executable(vmtranslator main.cc parser.cc parser.h codewriter.cc codewriter.h utils.h)
+add_executable(vmtranslator main.cc parser.cc parser.h codewriter.cc codewriter.h utils.cc utils.h)

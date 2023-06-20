@@ -31,6 +31,10 @@ class CodeWriter {
             return "@" + std::to_string(value) + "\nA=D+A\nD=M\n";
         }
         
+        std::string pushStatic(int value) {
+            return "@" + m_file_name + "." + std::to_string(value) + "\nD=M\n" + setStackValue() + addStackTop();
+        }
+
         std::string pushLocal(int value) {
             return getLocalValue() + setValueAddress(value) + setStackValue() + addStackTop();
         }
@@ -111,6 +115,11 @@ class CodeWriter {
         std::string getValueToR13() {
             return "@R13\nA=M\nM=D\n";
         }
+ 
+        std::string popStatic(int value) {
+            return getStackValueAndSubStackTop() + "@" + m_file_name + "." + std::to_string(value)
+                + "\nM=D\n";
+        }
 
         std::string popLocal(int value) {
             return getLocalValue() + setValueValue(value) + 
@@ -130,6 +139,7 @@ class CodeWriter {
                 getValueToR13();
         }
         
+        /* TODO Pointer的作用理解不深刻 */
         std::string popPointer(int value) {
             const std::string& begin = value == 0 ? getThisAdress() : getThatAddress();
             return begin + setValueToR13() + getStackValueAndSubStackTop() +
@@ -154,6 +164,7 @@ class CodeWriter {
 
 
         std::ofstream m_file;
+        std::string m_file_name;
         int m_index;
 };
 
