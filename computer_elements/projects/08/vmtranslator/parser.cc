@@ -21,10 +21,17 @@ void Parser::preHandleFile() {
         tmp_line.erase(std::remove(tmp_line.begin(), tmp_line.end(), '\r'), tmp_line.end());
         tmp_line.erase(std::remove(tmp_line.begin(), tmp_line.end(), '\n'), tmp_line.end());
 
-        // TODO 处理尾部注释
-        if ((tmp_line.find("//") != std::string::npos) || tmp_line.size() == 0) {
-            // 去掉注释
+        if (tmp_line.size() == 0) {
             continue;
+        }
+ 
+        auto find_comments_pos = tmp_line.find("//");
+        if (find_comments_pos == 0) {
+            continue;
+        }
+
+        if (find_comments_pos != std::string::npos && find_comments_pos > 0) {
+            tmp_line = tmp_line.substr(0, find_comments_pos);
         }
 
         std::cout << "debug tmp_line:" << tmp_line << "\n";

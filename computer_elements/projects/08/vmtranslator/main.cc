@@ -24,6 +24,14 @@ int main(int argc, char** argv) {
             codewriter->writePushPop("pop", parser->arg1(), parser->arg2());
         } else if (ret_type == Parser::C_ARITHMETIC) {
             codewriter->writeArithmetic(parser->arg1());
+        } else if (ret_type == Parser::C_LABEL) {
+            codewriter->writeLabel(parser->arg1());
+        } else if (ret_type == Parser::C_IF) {
+            codewriter->WriteIf(parser->arg1());
+        } else if (ret_type == Parser::C_GOTO) {
+            codewriter->WriteGoto(parser->arg1());
+        } else if (ret_type == Parser::C_FUNCTION) {
+            codewriter->WriteFunction(parser->arg1(), parser->arg2());
         } 
 
     }

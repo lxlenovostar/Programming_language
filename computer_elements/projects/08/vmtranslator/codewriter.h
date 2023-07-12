@@ -11,9 +11,17 @@ class CodeWriter {
         virtual ~CodeWriter();
         void writeArithmetic(const std::string& command); 
         void writePushPop(const std::string& command, const std::string& segment, int index); 
+        void writeLabel(const std::string& label);
+        void WriteIf(const std::string& label);
+        void WriteGoto(const std::string& label);
+        void WriteFunction(const std::string& functionName, int nVars);
 
     private:
         void writeFile(const std::string& command); 
+
+        std::string GetSymbol(const std::string& symbol) {
+            return std::string("(") + symbol + std::string(")\n");
+        }
 
         std::string pushConstant(int value) {
             return setValueContent(value) + setStackValue() + addStackTop();
@@ -92,8 +100,12 @@ class CodeWriter {
             return "@SP\nA=M\nM=D\n";
         }
         
-        std::string getStackValue() {
+        std::string getStackValueForTwoValues() {
             return "@SP\nAM=M-1\nD=M\nA=A-1\n";
+        }
+        
+        std::string getStackValueForOneValue() {
+            return "@SP\nAM=M-1\nD=M\n";
         }
         
         std::string addStackTop() {

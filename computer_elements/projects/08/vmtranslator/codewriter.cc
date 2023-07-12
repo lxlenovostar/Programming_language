@@ -72,6 +72,20 @@ void CodeWriter::writePushPop(const std::string& command,
             */
             ret_command = pushLocal(index); 
         } else if (segment == "this") {
+            /*
+                push this 2 
+
+                @LCL
+                D=M
+                @2
+                A=D+A
+                D=M
+                @SP
+                A=M
+                M=D
+                @SP
+                M=M+1
+             */
             ret_command = pushThis(index); 
         } else if (segment == "that") {
             ret_command = pushThat(index); 
@@ -221,6 +235,73 @@ void CodeWriter::writePushPop(const std::string& command,
 
 }
 
+void CodeWriter::writeLabel(const std::string& label) {
+    std::string ret_command; 
+    ret_command = std::string("@") + label + std::string("\n"); 
+
+    std::cout << "debug " << ret_command << std::endl;
+
+    writeFile(ret_command);
+}
+
+void CodeWriter::WriteIf(const std::string& label) {
+    std::string ret_command; 
+
+    /*
+        @SP
+        A=M-1
+        D=M
+        @label
+        D;JGT
+     */
+
+    ret_command = getStackValueForOneValue() + std::string("@") + label + std::string("\nD;JGT\n"); 
+
+    std::cout << "debug " << ret_command << std::endl;
+
+    writeFile(ret_command);
+}
+
+void CodeWriter::WriteGoto(const std::string& label) {
+    std::string ret_command; 
+
+    /*
+        @label
+        0;JMT
+     */
+    ret_command = std::string("@") + label + std::string("\n0;JMT\n"); 
+    std::cout << "debug " << ret_command << std::endl;
+    writeFile(ret_command);
+}
+
+void CodeWriter::WriteFunction(const std::string& functionName, int nVars) {
+    std::string ret_command; 
+
+    /*
+        (function)
+
+        @0
+        D=A
+
+        @SP
+        A=M
+        M=D
+
+        @SP
+        M=M+1
+     */
+
+    ret_command = GetSymbol(functionName); 
+
+    for (int i = 0; i < nVars; ++i) {
+        ret_command  += pushConstant(0); 
+    }
+
+    std::cout << "debug " << ret_command << std::endl;
+    writeFile(ret_command);
+}
+
+
 void CodeWriter::writeArithmetic(const std::string& command) {
     std::string ret_command; 
     if (command == "add") {
@@ -246,7 +327,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          M=M+D
 
          */
-        ret_command = getStackValue() + std::string("M=M+D\n"); 
+        ret_command = getStackValueForTwoValues() + std::string("M=M+D\n"); 
 
     } else if (command == "sub") {
         /*
@@ -263,7 +344,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          A=M-1
          M=M-D
          */
-        ret_command = getStackValue() + std::string("M=M-D\n"); 
+        ret_command = getStackValueForTwoValues() + std::string("M=M-D\n"); 
     } else if (command == "neg") {
         /*
          neg 
@@ -297,7 +378,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          A=M-1
          M=M&D
          */
-        ret_command = getStackValue() + std::string("M=M&D\n"); 
+        ret_command = getStackValueForTwoValues() + std::string("M=M&D\n"); 
     } else if (command == "or") {        
         /*
          or 
@@ -313,7 +394,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          A=M-1
          M=M|D
          */
-        ret_command = getStackValue() + std::string("M=M|D\n"); 
+        ret_command = getStackValueForTwoValues() + std::string("M=M|D\n"); 
     } else if (command == "eq" || command == "lt" || command == "gt") {
         m_index++;
         std::string inner_command;
@@ -354,7 +435,7 @@ void CodeWriter::writeArithmetic(const std::string& command) {
          */
         
         std::string str_index = std::to_string(m_index); 
-        ret_command = getStackValue() + std::string("@SP\nA=M-1\nD=M-D\n@TRUE") 
+        ret_command = getStackValueForTwoValues() + std::string("@SP\nA=M-1\nD=M-D\n@TRUE") 
             + str_index + "\nD;" + inner_command + "\n@SP\nA=M-1\nM=0\n@END" + str_index 
             + "\n0;JMP\n(TRUE" + str_index + ")\n@SP\nA=M-1\nM=-1\n(END" + str_index + ")\n"; 
     }
