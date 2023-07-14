@@ -15,6 +15,8 @@ class CodeWriter {
         void WriteIf(const std::string& label);
         void WriteGoto(const std::string& label);
         void WriteFunction(const std::string& functionName, int nVars);
+        void WriteReturn();
+        void WriteCall(const std::string& functionName, int nVars); 
 
     private:
         void writeFile(const std::string& command); 
@@ -119,6 +121,30 @@ class CodeWriter {
         std::string getAddressFromR13AndSetValue() {
             return "@R13\nA=M\nM=D\n";
         }
+        
+        std::string setValueToARGValue() {
+            return "@ARG\nA=M\nM=D\n";
+        } 
+        
+        std::string setValueToARG() {
+            return "@ARG\nM=D\n";
+        } 
+        
+        std::string setValueToTHAT() {
+            return "@THAT\nM=D\n";
+        } 
+        
+        std::string setValueToTHIS() {
+            return "@THIS\nM=D\n";
+        } 
+        
+        std::string setValueToLCL() {
+            return "@LCL\nM=D\n";
+        } 
+
+        std::string setValueToR14() {
+            return "@R14\nM=D\n";
+        } 
 
         std::string setValueToR13() {
             return "@R13\nM=D\n";

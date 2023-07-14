@@ -32,7 +32,11 @@ int main(int argc, char** argv) {
             codewriter->WriteGoto(parser->arg1());
         } else if (ret_type == Parser::C_FUNCTION) {
             codewriter->WriteFunction(parser->arg1(), parser->arg2());
-        } 
+        } else if (ret_type == Parser::C_RETURN) {
+            codewriter->WriteReturn();
+        } else if (ret_type == Parser::C_CALL) {
+            codewriter->WriteCall(parser->arg1(), parser->arg2());
+        }
 
     }
 

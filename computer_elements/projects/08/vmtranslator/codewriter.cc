@@ -237,7 +237,7 @@ void CodeWriter::writePushPop(const std::string& command,
 
 void CodeWriter::writeLabel(const std::string& label) {
     std::string ret_command; 
-    ret_command = std::string("@") + label + std::string("\n"); 
+    ret_command = std::string("(") + label + std::string(")\n"); 
 
     std::cout << "debug " << ret_command << std::endl;
 
@@ -269,10 +269,98 @@ void CodeWriter::WriteGoto(const std::string& label) {
         @label
         0;JMT
      */
-    ret_command = std::string("@") + label + std::string("\n0;JMT\n"); 
+    ret_command = std::string("@") + label + std::string("\n0;JMP\n"); 
     std::cout << "debug " << ret_command << std::endl;
     writeFile(ret_command);
 }
+
+void CodeWriter::WriteCall(const std::string& functionName, int nVars) {
+    std::string ret_command; 
+
+    /*
+        // TODO argu 为什么不是这边压栈
+        // push returnAddress
+        @funcname+returnaddress+callindex
+        D=A 
+        @SP  
+        A=M
+        M=D
+        @SP  
+        M=M+1
+
+        // push LCL
+        @LCL  
+        D=M
+
+        @SP
+        A=M
+        M=D  
+        @SP  
+        M=M+1
+
+        // ARG = SP -5 - nArgs
+        @nVars
+        D=A
+        @5
+        D=D+A
+        @SP 
+        D=M-D
+        @ARG 
+        M=D
+
+        // LCL = SP
+        @SP  
+        D=M
+        @LCL  
+        M=D
+
+        // goto f
+        @f
+        0;JMP
+
+        (returnAddress)
+        (funcname+returnaddress+callindex)
+
+
+     */
+    m_index++;
+
+    // push returnAddress
+    ret_command = "@" + functionName + "_returnAddress_" + std::to_string(m_index) + "\nD=A\n"; 
+    ret_command += setStackValue() + addStackTop();
+
+    // push LCL
+    ret_command += getLocalValue();
+    ret_command += setStackValue() + addStackTop();
+
+    // push ARG
+    ret_command += getArgumentValue();
+    ret_command += setStackValue() + addStackTop();
+
+    // push THIS 
+    ret_command += getThisValue();
+    ret_command += setStackValue() + addStackTop();
+    
+    // push THAT 
+    ret_command += getThatValue();
+    ret_command += setStackValue() + addStackTop();
+
+    // ARG = SP - 5 - nArgs
+    ret_command += setValueContent(nVars) + setValueValue(5) + "@SP\nD=M-D\n" + setValueToARG();
+
+    // LCL = SP
+    ret_command += "@SP\nD=M\n" + setValueToLCL();
+
+    // goto f
+    ret_command += "@" + functionName + "\n0;JMP\n";
+
+    // (returnAddress)
+    ret_command += "(" + functionName + "_returnAddress_" + std::to_string(m_index) + ")\n"; 
+
+    std::cout << "debug " << ret_command << std::endl;
+    writeFile(ret_command);
+}
+
 
 void CodeWriter::WriteFunction(const std::string& functionName, int nVars) {
     std::string ret_command; 
@@ -300,6 +388,106 @@ void CodeWriter::WriteFunction(const std::string& functionName, int nVars) {
     std::cout << "debug " << ret_command << std::endl;
     writeFile(ret_command);
 }
+
+void CodeWriter::WriteReturn() {
+    std::string ret_command; 
+
+    /*
+        return 
+
+        // frame=LCL
+        @LCL
+        D=M    // 保持的是LCL中存储的值
+        @R13
+        M=D 
+
+        // retAddr = *(frame - 5)
+        方法一：
+        @5
+        D=A
+        @R13
+        A=M-D
+        D=M
+        @R14
+        M=D
+ 
+        方法二：
+        @5
+        A=D-A
+        D=M
+        @R14
+        M=D
+
+        // *ARG=pop()
+        @SP
+        AM=M-1
+        D=M 
+        @ARG
+        A=M
+        M=D
+
+        // SP=ARG+1
+        @ARG
+        D=M+1
+        @SP
+        M=D
+
+        // THAT=*(frame-1)
+        @1
+        D=A
+        @R13
+        A=M-D
+        D=M
+        @THAT
+        M=D
+       
+        // THIS=*(frame-2)
+        @2
+        D=A
+        @R13
+        A=M-D
+        D=M
+        @THIS
+        M=D
+
+        // goto retAddr
+        @R14
+        A=M
+        0;JMP
+     */
+
+    // frame=LCL
+    ret_command +=  getLocalValue() + setValueToR13();
+
+    // retAddr = *(frame - 5)
+    ret_command += setValueContent(5) + "@R13\nA=M-D\nD=M\n" + setValueToR14();
+
+    // *ARG=pop()
+    ret_command += getStackValueForOneValue() + setValueToARGValue();
+
+    // SP=ARG+1
+    ret_command += "@ARG\nD=M+1\n@SP\nM=D\n";
+    
+    // THAT=*(frame-1)
+    // TODO 有优化的空间： https://github.com/FusionBolt/The-Elements-of-Computer-Systems-Project/blob/main/Proj7%2B8/CodeWriter.cpp#L220
+    ret_command += setValueContent(1) + "@R13\nA=M-D\nD=M\n" + setValueToTHAT();
+
+    // THIS=*(frame-2)
+    ret_command += setValueContent(2) + "@R13\nA=M-D\nD=M\n" + setValueToTHIS();
+    
+    // ARG=*(frame-3)
+    ret_command += setValueContent(3) + "@R13\nA=M-D\nD=M\n" + setValueToARG();
+    
+    // LCL=*(frame-4)
+    ret_command += setValueContent(4) + "@R13\nA=M-D\nD=M\n" + setValueToLCL();
+    
+    // goto retAddr
+    ret_command += "@R14\nA=M\n0;JMP\n";
+
+    std::cout << "debug " << ret_command << std::endl;
+    writeFile(ret_command);
+}
+
 
 
 void CodeWriter::writeArithmetic(const std::string& command) {
