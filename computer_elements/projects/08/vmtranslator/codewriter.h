@@ -7,7 +7,7 @@
 
 class CodeWriter {
     public:
-        CodeWriter(const std::string& filename);
+        CodeWriter(const std::string& filename, const std::string& src_filename, bool init_flag);
         virtual ~CodeWriter();
         void writeArithmetic(const std::string& command); 
         void writePushPop(const std::string& command, const std::string& segment, int index); 
@@ -17,6 +17,7 @@ class CodeWriter {
         void WriteFunction(const std::string& functionName, int nVars);
         void WriteReturn();
         void WriteCall(const std::string& functionName, int nVars); 
+        void WriteInit();
 
     private:
         void writeFile(const std::string& command); 
@@ -204,6 +205,7 @@ class CodeWriter {
         std::ofstream m_file;
         std::string m_file_name;
         int m_index;
+        bool m_init;
 };
 
 #endif

@@ -7,18 +7,32 @@
 #include "parser.h"
 #include "codewriter.h"
 
-CodeWriter::CodeWriter(const std::string& filename): m_file(filename), m_index(0) {
+CodeWriter::CodeWriter(const std::string& filename, const std::string& src_filename, bool init_flag = false): m_file(filename, std::ios::app), m_index(0), m_init(init_flag) {
     if (!m_file.is_open()) {
         std::cout << "can't open file: " << filename << std::endl;
     } 
 
-    m_file_name = get_filename(filename);
+    m_file_name = get_filename(src_filename);
+
+    if (m_init) {
+        WriteInit();
+        WriteCall("Sys.init", 0);
+    }
+
 }
 
 CodeWriter::~CodeWriter() {
     if (m_file.is_open()) {
         m_file.close();
     }
+}
+
+void CodeWriter::WriteInit()
+{
+    // Esp init
+    std::string init_command = "@256\nD=A\n"
+                         "@SP\nM=D\n"; // Esp init
+    writeFile(init_command);
 }
 
 void CodeWriter::writeFile(const std::string& command) {
@@ -255,7 +269,7 @@ void CodeWriter::WriteIf(const std::string& label) {
         D;JGT
      */
 
-    ret_command = getStackValueForOneValue() + std::string("@") + label + std::string("\nD;JGT\n"); 
+    ret_command = getStackValueForOneValue() + std::string("@") + label + std::string("\nD;JNE\n"); 
 
     std::cout << "debug " << ret_command << std::endl;
 
@@ -460,7 +474,8 @@ void CodeWriter::WriteReturn() {
     ret_command +=  getLocalValue() + setValueToR13();
 
     // retAddr = *(frame - 5)
-    ret_command += setValueContent(5) + "@R13\nA=M-D\nD=M\n" + setValueToR14();
+    //ret_command += setValueContent(5) + "@R13\nA=M-D\nD=M\n" + setValueToR14();
+    ret_command += "@5\nA=D-A\nD=M\n" + setValueToR14();
 
     // *ARG=pop()
     ret_command += getStackValueForOneValue() + setValueToARGValue();
@@ -470,16 +485,17 @@ void CodeWriter::WriteReturn() {
     
     // THAT=*(frame-1)
     // TODO 有优化的空间： https://github.com/FusionBolt/The-Elements-of-Computer-Systems-Project/blob/main/Proj7%2B8/CodeWriter.cpp#L220
-    ret_command += setValueContent(1) + "@R13\nA=M-D\nD=M\n" + setValueToTHAT();
+    //ret_command += setValueContent(1) + "@R13\nA=M-D\nD=M\n" + setValueToTHAT();
+    ret_command += "@R13\nD=M-1\nAM=D\nD=M\n" + setValueToTHAT();
 
     // THIS=*(frame-2)
-    ret_command += setValueContent(2) + "@R13\nA=M-D\nD=M\n" + setValueToTHIS();
+    ret_command += "@R13\nD=M-1\nAM=D\nD=M\n" + setValueToTHIS();
     
     // ARG=*(frame-3)
-    ret_command += setValueContent(3) + "@R13\nA=M-D\nD=M\n" + setValueToARG();
+    ret_command += "@R13\nD=M-1\nAM=D\nD=M\n" + setValueToARG();
     
     // LCL=*(frame-4)
-    ret_command += setValueContent(4) + "@R13\nA=M-D\nD=M\n" + setValueToLCL();
+    ret_command += "@R13\nD=M-1\nAM=D\nD=M\n" + setValueToLCL();
     
     // goto retAddr
     ret_command += "@R14\nA=M\n0;JMP\n";
