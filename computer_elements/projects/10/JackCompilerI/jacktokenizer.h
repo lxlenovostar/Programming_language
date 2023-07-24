@@ -3,70 +3,69 @@
 
 #include <string>
 #include <fstream>
+#include <variant>
 #include <vector>
-#include <set>
+#include <variant>
 
-class JackTokenizer {
-    public:
-        enum token_type {
-            KEYWORD = 0, 
-            SYMBOL,
-            IDENTIFIER,
-            INT_CONST,
-            STRING_CONST,
-            NULL_TYPE
-        };
+class JackTokenizer
+{
+public:
+    enum TokenType
+    {
+        KEYWORD,
+        SYMBOL,
+        IDENTIFIER,
+        INT_CONST,
+        STRING_CONST
+    };
 
-        enum keyword_type {
-            K_CLASS = 0,
-            K_METHOD,
-            K_INT, 
-            K_FUNCTION,
-            K_BOOL,
-            K_CONSTRUCTOR,
-            K_CHAR,
-            K_VOID,
-            K_VAR,
-            K_STATIC,
-            K_FIELD,
-            K_LET, 
-            K_DO,
-            K_IF,
-            K_ELSE,
-            K_WHILE,
-            K_RETURN,
-            K_TRUE,
-            K_FALSE,
-            K_NULL,
-            K_THIS,
-            K_NULL_KEYWORD
-        };
+    struct Token
+    {
+        TokenType type;
+        std::variant<std::string, int16_t> val;
+        int line;
+    };
 
-        JackTokenizer(const std::string& filename);
-        virtual ~JackTokenizer();
-        bool hasMoreTokens();
-        void advance(); 
-        token_type tokenType();
-        //keyword_type keyword();
-        std::string keyword();
-        std::string symbol();
-        std::string identifier();
-        int intVar();        
-        std::string stringVar();
+    JackTokenizer(const std::string& filePath);
 
-    private:
-        int m_pos;
-        std::ifstream m_jack_file;
-        token_type m_type;
-        std::vector<std::string> m_tokens; 
-        int m_tokens_len;
-        std::set<char> m_symbol;
-        std::set<std::string> m_keyword;
+    ~JackTokenizer();
 
-        void preHandleFile();
-        void spliteTokens(const std::string& tmp_line);
-        bool checkDigit(const std::string& str_digit); 
-        bool checkString(const std::string& str_str); 
+    bool hasMoreTokens();
+
+    void advance();
+
+    TokenType tokenType();
+
+    std::string keyword();
+
+    std::string symbol();
+
+    std::string identifier();
+
+    int16_t intVal();
+
+    std::string stringVal();
+
+private:
+    bool IsKeywords(const std::string &symbol);
+
+    bool IsIdentifierChar(char c);
+
+    void InitSymbolAndKeywords();
+
+    std::ifstream _srcFile;
+
+    std::string _srcCode;
+
+    Token _token;
+
+    std::size_t _index = 0;
+
+    std::string _symbols;
+
+    std::vector<std::string> _keywords;
+
+    std::size_t _nowLine;
 };
 
 #endif

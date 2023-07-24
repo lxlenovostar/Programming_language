@@ -5,6 +5,8 @@
 #include <fstream>
 #include <vector>
 
+#include "jacktokenizer.h"
+
 class CompilationEngine {
     public:
         CompilationEngine(const std::string& src_filename, const std::string& dst_filename);
@@ -27,9 +29,11 @@ class CompilationEngine {
     private:
         std::string m_src_file;
         std::ofstream m_dst_file;
+        std::shared_ptr<JackTokenizer> m_tokener;
 
         void writeFile(const std::string& command); 
         void writeToken(const std::string& category, const std::string& command); 
+        void compileString();
 };
 
 #endif

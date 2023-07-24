@@ -1,180 +1,239 @@
-#include <fstream>
-#include <algorithm>
 #include <iostream>
+#include <sstream>
 
 #include "jacktokenizer.h"
-#include "utils.h"
 
-JackTokenizer::JackTokenizer(const std::string& filename): m_pos(-1), m_jack_file(filename),
-    m_type(NULL_TYPE), m_tokens_len(-1) {
-    if (!m_jack_file.is_open()) {
-        std::cout << "can't open file: " << filename << std::endl;
-    } else {
-        preHandleFile();
+JackTokenizer::JackTokenizer(const std::string& filePath):_srcFile(filePath)
+{
+    if(!_srcFile.is_open())
+    {
+        std::cout << "file open failed" << std::endl;
     }
 
-    m_symbol = {'{', '}', '(', ')', '[', ']', '.', ',', ';', '+', '-', '*', '/', 
-        '&', '|', '<', '>', '=', '~'};
+    std::ostringstream tmp;
+    tmp << _srcFile.rdbuf();
+    _srcCode = tmp.str();
 
-    m_keyword = {"class", "constructor", "function", "method", "field", "static",
-        "var", "int", "char", "boolean", "void", "true", "false", "null", "this", "let", "do",
-        "if", "else", "while", "return"};
+    //std::cout << _srcCode << std::endl;
+    // symbol
+    InitSymbolAndKeywords();
 }
 
-void JackTokenizer::preHandleFile() {
-    std::string tmp_line("");
-    while (std::getline(m_jack_file, tmp_line)) {
-        
-        tmp_line.erase(std::remove(tmp_line.begin(), tmp_line.end(), '\r'), tmp_line.end());
-        tmp_line.erase(std::remove(tmp_line.begin(), tmp_line.end(), '\n'), tmp_line.end());
-
-        if (tmp_line.size() == 0) {
-            continue;
-        }
- 
-        auto find_comments_pos = tmp_line.find("//");
-        if (find_comments_pos == 0) {
-            continue;
-        }
-
-        if (find_comments_pos != std::string::npos && find_comments_pos > 0) {
-            tmp_line = tmp_line.substr(0, find_comments_pos);
-        }
-        
-        //  去掉  /**,  *\/,  *, 
-        find_comments_pos = tmp_line.find("/**");
-        if (find_comments_pos == 0) {
-            continue;
-        }
-        
-        find_comments_pos = tmp_line.find(" *");
-        if (find_comments_pos == 0) {
-            continue;
-        }
-        
-        find_comments_pos = tmp_line.find("*/");
-        if (find_comments_pos != std::string::npos) {
-            continue;
-        }
-
-        std::cout << "debug tmp_line:" << tmp_line << "\n";
-
-        // 对所有行进行分解成 tokens.
-        spliteTokens(tmp_line);
+bool JackTokenizer::hasMoreTokens()
+{
+    if(_index >= _srcCode.size() - 1)
+    {
+        return false;
     }
+    return true;
+    // return (!((_srcCode.size() - 1) < _index));
 }
 
-void JackTokenizer::spliteTokens(const std::string& tmp_line) {
-    std::string word;
-    for (const auto& c : tmp_line) {
-        if (c == ' ') { // 以空格为分隔符
-            if (!word.empty()) { // 如果单词不为空，则添加到结果中
-                m_tokens.push_back(word);
-                word.clear();
-            }
-        } else if (m_symbol.find(c) != m_symbol.end()) {
-            if (!word.empty()) { // 如果单词不为空，则添加到结果中
-                m_tokens.push_back(word);
-                word.clear();
-            }  
-            word.push_back(c);
-            m_tokens.push_back(word);
-            word.clear();
-        } else {
-            word += c; // 否则将字符添加到单词中
-        }
-    }
-
-    if (!word.empty()) { // 处理最后一个单词
-        m_tokens.push_back(word);
-    }
-    m_tokens_len = m_tokens.size();
-}
-
-JackTokenizer::~JackTokenizer() {
-    if (m_jack_file.is_open()) {
-        m_jack_file.close();
-    }
-}
-
-bool JackTokenizer::hasMoreTokens() {
-    return m_jack_file.is_open() && (m_pos < m_tokens_len);
-}
-
-void JackTokenizer::advance() {
-    if (m_pos < m_tokens_len) {
-        ++m_pos;
-    }
-}
-
-bool JackTokenizer::checkDigit(const std::string& str_digit) {
-    return !str_digit.empty() && std::find_if(str_digit.begin(), 
-        str_digit.end(), [](unsigned char c) { return !std::isdigit(c); }) == str_digit.end();
-}
-
-bool JackTokenizer::checkString(const std::string& str_str) {
-    // TODO 实现不太准确
-    auto pos = str_str.find("\"");
-    return pos == 0 ? true: false;
-}
-    
-JackTokenizer::token_type JackTokenizer::tokenType() {
-    const std::string& current_token = m_tokens.at(m_pos);
-    if (m_keyword.find(current_token) != m_keyword.end()) {
-        m_type = JackTokenizer::KEYWORD;
-    } else if (current_token.size() == 1 && m_symbol.find(current_token[0]) != m_symbol.end()) {
-        m_type = JackTokenizer::SYMBOL;
-    } else if (checkDigit(current_token)) {
-        m_type = JackTokenizer::INT_CONST;
-    } else if (checkString(current_token)) {
-        m_type = JackTokenizer::STRING_CONST; 
-    } else {
-        m_type = JackTokenizer::IDENTIFIER;
-    }
-
-    return m_type;
-}
-
-std::string JackTokenizer::keyword() {
-    std::string keyword = m_tokens.at(m_pos);
-
-    //std::transform(keyword.begin(), keyword.end(), keyword.begin(), [](char const &c) {
-    //    return std::toupper(c);});
-    
-    return keyword;
-}
-
-std::string JackTokenizer::symbol() {
-    return m_tokens.at(m_pos);
-}
-
-std::string JackTokenizer::identifier() {
-    return m_tokens.at(m_pos);
-}
-
-int JackTokenizer::intVar() {
-    return std::stoi(m_tokens.at(m_pos));
-}
-
-std::string JackTokenizer::stringVar() {
-    std::string ret_str = m_tokens.at(m_pos);
-
-    while(m_pos < m_tokens_len) {
-        advance();
-
-        std::string token = m_tokens.at(m_pos);
-        ret_str += " " + token;
-
-        if (token.find("\"") != std::string::npos) {
+void JackTokenizer::advance()
+{
+    // switch token type
+    // token parse
+    while(true)
+    {
+        auto nowChar = _srcCode[_index];
+        if(_index >= _srcCode.size() - 1)
+        {
             break;
         }
-    }
+        //std::cout << "r" << std::endl;
 
-   return ret_str;
+        if(nowChar >= '0' && nowChar <= '9')
+        {
+            // int const
+            auto firstIndex = _index;
+            while(_srcCode[_index] >= '0' && _srcCode[_index] <= '9')
+            {
+                _index++;
+            }
+            _token.val = std::stoi(_srcCode.substr(firstIndex, _index - firstIndex));
+            _token.type = INT_CONST;
+            break;
+        }
+        else if((nowChar >= 'a' && nowChar <= 'z') ||
+                (nowChar >= 'A' && nowChar <= 'Z'))
+        {
+            // keyword and identifier
+            // auto lastIndex = _srcCode.find(" ", _index + 1); // find
+            auto index = _index + 1;
+            while(IsIdentifierChar(_srcCode[index]))
+            {
+                index++;
+            }
+            auto symbol = _srcCode.substr(_index, index - _index);
+            if(IsKeywords(symbol))
+            {
+                if(symbol == "null")
+                {
+                    std::cout << "null" << std::endl;
+                }
+                _token.val = symbol;
+                _token.type = KEYWORD;
+                std::cout << "token val:" << std::get<std::string>(_token.val) << std::endl;
+            }
+            else
+            {
+                _token.val = symbol;
+                _token.type = IDENTIFIER;
+            }
+            _index = index;
+
+            std::cout << std::get<std::string>(_token.val) << std::endl;
+            break;
+        }
+        else if(nowChar == '"')
+        {
+            // string const
+            auto firstIndex = _index;
+            auto lastIndex = _srcCode.find('\"', _index + 1);
+            _token.val = _srcCode.substr(firstIndex + 1, lastIndex - (firstIndex + 1));
+            _token.type = STRING_CONST;
+            _index = lastIndex + 1;
+            std::cout << "symbol:" << std::get<std::string>(_token.val) << std::endl;
+            break;
+        }
+        else if(nowChar == '\r' || nowChar == '\n' ||
+                nowChar == ' ' || nowChar == '\0' || nowChar == '\t')
+        {
+            // space and linebreak
+            _index++;
+            continue;
+        }
+        else if(nowChar == '/')
+        {
+            // comment
+            if(_srcCode[_index + 1] == '/')
+            {
+                std::string breakLineSymbol = "\r\n";
+                // auto lastIndex = _srcCode.find("\r", _index + 2);
+                auto lastIndex = _srcCode.find_first_of(breakLineSymbol, _index + 2);
+                auto v = _srcCode;
+                if(lastIndex == std::string::npos)
+                {
+                    std::cout << "// can't find";
+                }
+                _index = lastIndex + 1;
+                continue;
+            }
+            else if(_srcCode[_index + 1] == '*')
+            {
+                auto lastIndex = _srcCode.find("*/", _index + 2);
+                _index = lastIndex + 2;
+                continue;
+            }
+            else
+            {
+                _token.val = std::string(1, nowChar);
+                _token.type = SYMBOL;
+                ++_index;
+                std::cout << "symbol:" << std::get<std::string>(_token.val) << std::endl;
+                break;
+            }
+        }
+        else if(_symbols.find(nowChar) != std::string::npos)
+        {
+            _token.val = std::string(1, nowChar);
+            _token.type = SYMBOL;
+            ++_index;
+            auto val = std::get<std::string>(_token.val);
+            std::cout << "symbol:" << std::get<std::string>(_token.val) << std::endl;
+            break;
+        }
+        else
+        {
+            auto s = nowChar;
+            std::cout << "unspport token:" << s << std::endl;
+            ++_index;
+        }
+    }
 }
 
+JackTokenizer::TokenType JackTokenizer::tokenType()
+{
+    return _token.type;
+}
 
+std::string JackTokenizer::keyword()
+{
+    return std::get<std::string>(_token.val);
+}
 
+std::string JackTokenizer::symbol()
+{
+    return std::get<std::string>(_token.val);
+}
+
+std::string JackTokenizer::identifier()
+{
+    return std::get<std::string>(_token.val);
+}
+
+int16_t JackTokenizer::intVal()
+{
+    return std::get<int16_t >(_token.val);
+}
+
+std::string JackTokenizer::stringVal()
+{
+    if(tokenType() == INT_CONST)
+    {
+        return "error";
+    }
+    return std::get<std::string>(_token.val);
+}
+
+void JackTokenizer::InitSymbolAndKeywords()
+{
+    _symbols = "{}()[].,;+-*&|<>=~";
+    _keywords.emplace_back("class");
+    _keywords.emplace_back("constructor");
+    _keywords.emplace_back("function");
+    _keywords.emplace_back("method");
+    _keywords.emplace_back("field");
+    _keywords.emplace_back("static");
+    _keywords.emplace_back("var");
+    _keywords.emplace_back("int");
+    _keywords.emplace_back("char");
+    _keywords.emplace_back("boolean");
+    _keywords.emplace_back("void");
+    _keywords.emplace_back("true");
+    _keywords.emplace_back("false");
+    _keywords.emplace_back("null");
+    _keywords.emplace_back("this");
+    _keywords.emplace_back("let");
+    _keywords.emplace_back("do");
+    _keywords.emplace_back("if");
+    _keywords.emplace_back("else");
+    _keywords.emplace_back("while");
+    _keywords.emplace_back("return");
+}
+
+bool JackTokenizer::IsKeywords(const std::string &symbol)
+{
+    for(auto& v : _keywords)
+    {
+        if(symbol == v)
+        {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool JackTokenizer::IsIdentifierChar(char c)
+{
+    return (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') ||
+           (c >= '0' && c <= '9') || (c == '_');
+}
+
+JackTokenizer::~JackTokenizer()
+{
+    _srcFile.close();
+}
 
 
 

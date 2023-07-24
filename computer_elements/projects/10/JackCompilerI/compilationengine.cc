@@ -13,7 +13,8 @@ m_src_file(src_filename), m_dst_file(dst_filename, std::ios::app) {
     if (!m_dst_file.is_open()) {
         std::cout << "can't open file: " << dst_filename << std::endl;
     } 
-
+    
+    m_tokener = std::make_shared<JackTokenizer>(m_src_file);
 }
 
 CompilationEngine::~CompilationEngine() {
@@ -33,7 +34,7 @@ void CompilationEngine::writeFile(const std::string& command) {
 
 void CompilationEngine::writeToken(const std::string& category, const std::string& command) {
     std::string ret_command = "<" + category + "> " + command + " </" + category + ">\n";
-    writeFile(command);
+    writeFile(ret_command);
 }
 
 void CompilationEngine::compileTerm() {
@@ -46,57 +47,160 @@ void CompilationEngine::compileExpression() {
 }
 
 void CompilationEngine::compileIf() {
+    while(m_tokener->hasMoreTokens()) {
+        m_tokener->advance();
+
+        auto token_type = m_tokener->tokenType();
+
+        if (token_type == JackTokenizer::KEYWORD) {
+            auto token = m_tokener->keyword();
+            writeToken("keyword", token);   
+            if (token == "if" || token == "else") {
+                compileIf();
+            } else if (token == "let") {
+                compileLet();
+            } else if (token == "var") {
+                compileVarDec();
+            } else if (token == "while") {
+                compileWhile();
+            }
+
+        } else if (token_type == JackTokenizer::SYMBOL) {
+           auto token = m_tokener->symbol();
+            writeToken("symbol", token);
+           if (token[0] == '}') {
+                break;
+           } 
+        } else if (token_type == JackTokenizer::INT_CONST) {
+            auto token = std::to_string(m_tokener->intVal());
+            writeToken("integerConstant", token);
+        } else if (token_type == JackTokenizer::STRING_CONST) {
+            auto token = m_tokener->stringVal();
+            writeToken("stringConstant", token);
+        } else if (token_type == JackTokenizer::IDENTIFIER) {
+            auto token = m_tokener->identifier();
+            writeToken("identifier", token);
+        }
+    }
 }
 
 void CompilationEngine::compileReturn() {
 }
 
-void CompilationEngine::compileWhile() {
+void CompilationEngine::compileWhile() {  
+
+    while(m_tokener->hasMoreTokens()) {
+        m_tokener->advance();
+
+        auto token_type = m_tokener->tokenType();
+
+        if (token_type == JackTokenizer::KEYWORD) {
+            auto token = m_tokener->keyword();
+            writeToken("keyword", token);   
+            if (token == "if" || token == "else") {
+                compileIf();
+            } else if (token == "let") {
+                compileLet();
+            } else if (token == "var") {
+                compileVarDec();
+            } else if (token == "while") {
+                compileWhile();
+            }
+
+        } else if (token_type == JackTokenizer::SYMBOL) {
+           auto token = m_tokener->symbol();
+            writeToken("symbol", token);
+           if (token[0] == '}') {
+                break;
+           } 
+        } else if (token_type == JackTokenizer::INT_CONST) {
+            auto token = std::to_string(m_tokener->intVal());
+            writeToken("integerConstant", token);
+        } else if (token_type == JackTokenizer::STRING_CONST) {
+            auto token = m_tokener->stringVal();
+            writeToken("stringConstant", token);
+        } else if (token_type == JackTokenizer::IDENTIFIER) {
+            auto token = m_tokener->identifier();
+            writeToken("identifier", token);
+        }
+    }
+
 }
 
 void CompilationEngine::compileLet() {
+    while(m_tokener->hasMoreTokens()) {
+        m_tokener->advance();
+
+        auto token_type = m_tokener->tokenType();
+
+        if (token_type == JackTokenizer::KEYWORD) {
+            auto token = m_tokener->keyword();
+            writeToken("keyword", token); 
+        } else if (token_type == JackTokenizer::SYMBOL) {
+           auto token = m_tokener->symbol();
+            writeToken("symbol", token);
+           if (token[0] == ';') {
+                break;
+           } 
+        } else if (token_type == JackTokenizer::INT_CONST) {
+            auto token = std::to_string(m_tokener->intVal());
+            writeToken("integerConstant", token);
+        } else if (token_type == JackTokenizer::STRING_CONST) {
+            auto token = m_tokener->stringVal();
+            writeToken("stringConstant", token);
+        } else if (token_type == JackTokenizer::IDENTIFIER) {
+            auto token = m_tokener->identifier();
+            writeToken("identifier", token);
+        }
+    }
+
 }
 
 void CompilationEngine::compileDo() {
+    while(m_tokener->hasMoreTokens()) {
+        m_tokener->advance();
+
+        auto token_type = m_tokener->tokenType();
+
+        if (token_type == JackTokenizer::KEYWORD) {
+            auto token = m_tokener->keyword();
+            writeToken("keyword", token); 
+        } else if (token_type == JackTokenizer::SYMBOL) {
+           auto token = m_tokener->symbol();
+            writeToken("symbol", token);
+           if (token[0] == ';') {
+                break;
+           } 
+        } else if (token_type == JackTokenizer::INT_CONST) {
+            auto token = std::to_string(m_tokener->intVal());
+            writeToken("integerConstant", token);
+        } else if (token_type == JackTokenizer::STRING_CONST) {
+            auto token = m_tokener->stringVal();
+            writeToken("stringConstant", token);
+        } else if (token_type == JackTokenizer::IDENTIFIER) {
+            auto token = m_tokener->identifier();
+            writeToken("identifier", token);
+        }
+    }
+    
 }
 
 void CompilationEngine::compileStatements() {
 }
 
 void CompilationEngine::compileVarDec() {
-}
+    while(m_tokener->hasMoreTokens()) {
+        m_tokener->advance();
 
-void CompilationEngine::compileParameterList() {
-}
-
-void CompilationEngine::compileSubroutine() {
-}
-
-void CompilationEngine::compileClassVarDec() {
-    /*
-    writeFile("<tokens>\n");
-    std::shared_ptr<JackTokenizer> tokens = std::make_shared<JackTokenizer>(m_dst_file);
-
-    while(tokens->hasMoreTokens()) {
-        tokens->advance();
-
-        auto token_type = tokens->tokenType();
+        auto token_type = m_tokener->tokenType();
 
         if (token_type == JackTokenizer::KEYWORD) {
-            auto token = tokens->keyword();
-            if (token == "class") {
-                writeToken("keyword", token);
-            } else if (token == "static" || token == "field") {
-                writeToken("keyword", token);
-                compileClassVarDec();
-            } else if (token == "constructor" || token == "method" || token == "function") {
-                writeToken("keyword", token);
-                compileSubroutine();
-            }
+            auto token = m_tokener->keyword();
+            writeToken("keyword", token); 
         } else if (token_type == JackTokenizer::SYMBOL) {
-           auto token = tokens->symbol();
-           if (token[0] == '}') {
-                writeToken("symbol", token);
+           auto token = m_tokener->symbol();
+            writeToken("symbol", token);
+           if (token[0] == ';') {
                 break;
            } 
         } else if (token_type == JackTokenizer::INT_CONST) {
@@ -104,36 +208,105 @@ void CompilationEngine::compileClassVarDec() {
         } else if (token_type == JackTokenizer::STRING_CONST) {
             // do nothing
         } else if (token_type == JackTokenizer::IDENTIFIER) {
-            auto token = tokens->identifier();
+            auto token = m_tokener->identifier();
             writeToken("identifier", token);
         }
     
     }
-    writeFile("</tokens>\n");
-    */
+
 }
-void CompilationEngine::compileClass() {
-    writeFile("<tokens>\n");
-    std::shared_ptr<JackTokenizer> tokens = std::make_shared<JackTokenizer>(m_src_file);
 
-    while(tokens->hasMoreTokens()) {
-        tokens->advance();
+void CompilationEngine::compileParameterList() {
+}
 
-        auto token_type = tokens->tokenType();
+void CompilationEngine::compileSubroutine() { 
+    
+    while(m_tokener->hasMoreTokens()) {
+        m_tokener->advance();
+
+        auto token_type = m_tokener->tokenType();
 
         if (token_type == JackTokenizer::KEYWORD) {
-            auto token = tokens->keyword();
-            if (token == "class") {
-                writeToken("keyword", token);
-            } else if (token == "static" || token == "field") {
+            auto token = m_tokener->keyword();
+            writeToken("keyword", token);
+            if (token == "if" || token == "else") {
+                compileIf();
+            } else if (token == "let") {
+                compileLet();
+            } else if (token == "var") {
+                compileVarDec();
+            } else if (token == "while") {
+                compileWhile();
+            }
+        } else if (token_type == JackTokenizer::SYMBOL) {
+           auto token = m_tokener->symbol();
+            writeToken("symbol", token);
+           if (token[0] == '}') {
+                break;
+           } 
+        } else if (token_type == JackTokenizer::INT_CONST) {
+        } else if (token_type == JackTokenizer::STRING_CONST) {
+            // do nothing
+        } else if (token_type == JackTokenizer::IDENTIFIER) {
+            auto token = m_tokener->identifier();
+            writeToken("identifier", token);
+        }
+    
+    }
+
+}
+
+void CompilationEngine::compileClassVarDec() {
+
+    while(m_tokener->hasMoreTokens()) {
+        m_tokener->advance();
+
+        auto token_type = m_tokener->tokenType();
+
+        if (token_type == JackTokenizer::KEYWORD) {
+            auto token = m_tokener->keyword();
+            writeToken("keyword", token); 
+        } else if (token_type == JackTokenizer::SYMBOL) {
+           auto token = m_tokener->symbol();
+            writeToken("symbol", token);
+           if (token[0] == ';') {
+                break;
+           } 
+        } else if (token_type == JackTokenizer::INT_CONST) {
+            auto token = std::to_string(m_tokener->intVal());
+            writeToken("integerContstant", token);
+        } else if (token_type == JackTokenizer::STRING_CONST) {
+            // do nothing
+        } else if (token_type == JackTokenizer::IDENTIFIER) {
+            auto token = m_tokener->identifier();
+            writeToken("identifier", token);
+        }
+    
+    }
+}
+
+void CompilationEngine::compileClass() {
+    writeFile("<tokens>\n");
+
+    while(m_tokener->hasMoreTokens()) {
+        m_tokener->advance();
+
+        auto token_type = m_tokener->tokenType();
+
+        if (token_type == JackTokenizer::KEYWORD) {
+            auto token = m_tokener->keyword();
+            if (token == "static" || token == "field") {
                 writeToken("keyword", token);
                 compileClassVarDec();
             } else if (token == "constructor" || token == "method" || token == "function") {
                 writeToken("keyword", token);
                 compileSubroutine();
+            } else {
+                writeToken("keyword", token);
             }
+
         } else if (token_type == JackTokenizer::SYMBOL) {
-            auto token = tokens->symbol();
+            auto token = m_tokener->symbol();
             writeToken("symbol", token);
             if (token[0] == '}') {
                 break;
@@ -141,9 +314,8 @@ void CompilationEngine::compileClass() {
         } else if (token_type == JackTokenizer::INT_CONST) {
             // do nothing
         } else if (token_type == JackTokenizer::STRING_CONST) {
-            // do nothing
         } else if (token_type == JackTokenizer::IDENTIFIER) {
-            auto token = tokens->identifier();
+            auto token = m_tokener->identifier();
             writeToken("identifier", token);
         }
     

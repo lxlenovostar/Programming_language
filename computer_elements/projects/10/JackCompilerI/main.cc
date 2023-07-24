@@ -29,11 +29,11 @@ int main(int argc, char** argv) {
     for (auto &val:v) {
         std::cout << "##################################### debug filename:" << val << std::endl;
         // TODO 修改模板文件名
-        std::string dst_filename = get_filename(val);
+        std::string dst_filename = get_filename(val) + ".xml";
         // 因为写入为append, 先删除文件
         remove(dst_filename.c_str());
 
-        std::shared_ptr<CompilationEngine> engine = std::make_shared<CompilationEngine>(val, dst_filename+".xml");
+        std::shared_ptr<CompilationEngine> engine = std::make_shared<CompilationEngine>(val, dst_filename);
         engine->compileClass();
     }
 
